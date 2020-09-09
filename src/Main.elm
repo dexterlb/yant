@@ -13,6 +13,8 @@ import Json.Decode as JD
 import Html exposing (Html, text, div)
 import Html.Attributes exposing (class)
 
+import Ui
+
 
 main =
     Browser.application
@@ -28,8 +30,9 @@ main =
 
 
 type alias Model =
-    { url : Url
+    { url: Url
     , key: Key
+    , ui:  Ui.Model
     }
 
 
@@ -49,6 +52,7 @@ emptyModel : Url -> Key -> Model
 emptyModel url key =
     { url = url
     , key = key
+    , ui  = Ui.init
     }
 
 -- UPDATE
@@ -57,6 +61,7 @@ emptyModel url key =
 type Msg
     = UrlChanged Url
     | UrlRequested UrlRequest
+    | UiMsg Ui.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -77,6 +82,10 @@ update msg model =
                     , Browser.Navigation.load url
                     )
 
+        UiMsg uiMsg ->
+            let (ui, cmd) = Ui.update UiMsg uiMsg model.ui in
+                ({ model | ui = ui }, cmd)
+
 -- SUBSCRIPTIONS
 
 
@@ -92,8 +101,4 @@ subscriptions _ = Sub.batch
 view : Model -> Document Msg
 view model = Document
     "notes"
-    [ bodyView model ]
-
-bodyView : Model -> Html Msg
-bodyView model =
-    div [] [ text "reconnecting" ]
+    [ Html.map UiMsg <| Ui.view model.ui ]

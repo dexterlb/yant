@@ -1,6 +1,9 @@
 let fragment = new URLSearchParams(window.location.hash.substr(1));
 let theme = fragment.get('theme');
 
+// do nothing with theme yet. todo.
+require('./styles/main.scss');
+
 let elm = require('./Main.elm')
 
 type ElmApp = any   // he he
