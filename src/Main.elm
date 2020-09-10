@@ -14,6 +14,8 @@ import Html exposing (Html, text, div)
 import Html.Attributes exposing (class)
 
 import Ui
+import Storage
+import Cards
 
 
 main =
@@ -37,22 +39,16 @@ type alias Model =
 
 
 init : JE.Value -> Url -> Key -> ( Model, Cmd Msg )
-init _ url key = let model = emptyModel url key
-    in (model, startCommand model)
+init _ url key = let (ui, cmd, actions) = Ui.init "root" in
+    let model = emptyModel url key ui
+        in (model, Cmd.batch [cmd, performUiActions model actions])
 
 
-startCommand : Model -> Cmd Msg
-startCommand model =
-    Cmd.batch
-        [
-        ]
-
-
-emptyModel : Url -> Key -> Model
-emptyModel url key =
+emptyModel : Url -> Key -> Ui.Model -> Model
+emptyModel url key ui =
     { url = url
     , key = key
-    , ui  = Ui.init "root"
+    , ui  = ui
     }
 
 -- UPDATE
@@ -62,13 +58,13 @@ type Msg
     = UrlChanged Url
     | UrlRequested UrlRequest
     | UiMsg Ui.Msg
+    | UiInput Ui.InputMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UrlChanged url -> let newModel = emptyModel url model.key in
-            ( newModel, startCommand newModel )
+        UrlChanged url -> init JE.null url model.key
 
         UrlRequested urlRequest ->
             case urlRequest of
@@ -83,18 +79,33 @@ update msg model =
                     )
 
         UiMsg uiMsg ->
-            let (ui, cmd) = Ui.update UiMsg uiMsg model.ui in
-                ({ model | ui = ui }, cmd)
+            let (ui, cmd, actions) = Ui.update UiMsg uiMsg model.ui in
+                ({ model | ui = ui }, Cmd.batch [cmd, performUiActions model actions])
+
+        UiInput input ->
+            let (ui, cmd, actions) = Ui.pushMsg UiMsg input model.ui in
+                ({ model | ui = ui }, Cmd.batch [cmd, performUiActions model actions])
+
+
+performUiActions : Model -> Ui.Actions -> Cmd Msg
+performUiActions model actions = Cmd.batch <| List.map (performUiAction model) actions
+
+performUiAction : Model -> Ui.Action -> Cmd Msg
+performUiAction model action = case action of
+    Ui.GetCard id -> Storage.getCard <| Cards.encodeCardID id
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.batch
-    [
+    [ Storage.gotCard (handleJson (UiInput << Ui.GotCard) Cards.decodeCard)
     ]
 
-
+handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg
+handleJson handler decoder v = case JD.decodeValue decoder v of
+    Err err  -> Debug.todo "error" err
+    Ok  data -> handler data
 
 -- VIEW
 

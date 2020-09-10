@@ -1,4 +1,4 @@
-module Ui exposing (Model, Msg, init, update, view)
+module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
 
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
@@ -6,7 +6,7 @@ import Html.Attributes exposing (class)
 import Dict as Dict
 import List.Nonempty as NE
 
-import Cards exposing (..)
+import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
 
 
@@ -25,22 +25,40 @@ type alias EditContext =
     { path: CardPath
     }
 
-type Msg =
-    Foo
+type Msg
+    = Foo
 
-init : CardID -> Model
+type InputMsg
+    = GotCard Card
+
+type Action
+    = GetCard CardID
+
+type alias Actions = List Action
+
+
+init : CardID -> (Model, Cmd m, Actions)
 init rootCard =
-    { cards = noCards
-    , rootCard = rootCard
-    , context =
-        { edit = Nothing
-        , expanded = PT.empty
+    (
+        { cards = noCards
+        , rootCard = rootCard
+        , context =
+            { edit = Nothing
+            , expanded = PT.empty
+            }
         }
-    }
+    ,   Cmd.none
+    ,   [GetCard "root"]
+    )
 
-update : (Msg -> m) -> Msg -> Model -> ( Model, Cmd m )
+update : (Msg -> m) -> Msg -> Model -> ( Model, Cmd m, Actions )
 update liftMsg msg model = case msg of
-    Foo -> (model, Cmd.none)
+    Foo -> (model, Cmd.none, [])
+
+pushMsg : (Msg -> m) -> InputMsg -> Model -> ( Model, Cmd m, Actions )
+pushMsg liftMsg inMsg model = case inMsg of
+    GotCard card ->
+        ( { model | cards = Cards.add card model.cards }, Cmd.none, [] )
 
 
 viewCard : Context -> CardPath -> Cards -> Html Msg

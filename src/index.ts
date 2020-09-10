@@ -18,10 +18,18 @@ function init(app: ElmApp): Context {
     }
 }
 
-async function process_message(ctx: Context, msg: any): Promise<void> {
-    switch (msg._t) {
-        default:
-            throw new Error('what do I do with ' + msg._t)
+async function process_get_card(ctx: Context, cardID: string): Promise<void> {
+    let storage = window.localStorage;
+    let card = storage.getItem(cardID)
+
+    if (card == null) {
+        ctx.app.ports.gotCard.send({
+            id: cardID,
+            text: "<empty>",
+            children: [],
+        })
+    } else {
+        ctx.app.ports.gotCard.send(card)
     }
 }
 
@@ -30,10 +38,10 @@ function main() {
 
     let ctx = init(app)
 
-    app.ports.outgoing.subscribe((msg: any) => {
-        process_message(ctx, msg).then(() => {
+    app.ports.getCard.subscribe((cardID: any) => {
+        process_get_card(ctx, cardID as string).then(() => {
         }).catch(err => {
-            console.log('error while processing ', msg, ': ', err)
+            console.log('error while processing get_card request for id', cardID, ': ', err)
         })
     });
 }
