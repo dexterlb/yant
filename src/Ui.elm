@@ -45,6 +45,7 @@ type Msg
     | EditCard    CardPath
     | AddChild    CardPath
     | Expand      CardPath
+    | Collapse    CardPath
     | AddChildWithID CardPath CardID
     | SaveEdit
 
@@ -95,6 +96,10 @@ update msg model = let oldContext = model.context in case msg of
         let (model1, actions) = expand path model
         in
             ( model1, Cmd.none, actions )
+    Collapse path ->
+        let (model1, actions) = collapse path model
+        in
+            ( model1, Cmd.none, actions )
 
 
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
@@ -109,12 +114,14 @@ viewCard ctx path cards = case Dict.get (NE.head path) cards of
     Just card -> case isExpanded ctx path of
         True ->
             div [ class "card", class "expanded" ]
-                [ viewCardBody path card ctx.state
+                [ viewExpandedCardControls path ctx
+                , viewCardBody path card ctx.state
                 , viewCardChildren ctx path cards card.children
                 ]
         False ->
             div [ class "card", class "collapsed" ]
-                [ viewCardBody path card ctx.state
+                [ viewCollapsedCardControls path ctx
+                , viewCardBody path card ctx.state
                 ]
 
 viewCardChildren : Context -> CardPath -> Cards -> List CardID -> Html Msg
@@ -179,6 +186,22 @@ viewCardButtonBar path card = div [ class "button-bar" ]
         }
     ]
 
+viewExpandedCardControls : CardPath -> Context -> Html Msg
+viewExpandedCardControls path ctx = div [ class "controls" ]
+    [ Element.layout [] <| Element.Input.button []
+        { onPress = Just (Collapse path)
+        , label = Element.text "collapse"
+        }
+    ]
+
+viewCollapsedCardControls : CardPath -> Context -> Html Msg
+viewCollapsedCardControls path ctx = div [ class "controls" ]
+    [ Element.layout [] <| Element.Input.button []
+        { onPress = Just (Expand path)
+        , label = Element.text "expand"
+        }
+    ]
+
 
 view : Model -> Html Msg
 view { context, cards, rootCard } =
@@ -197,6 +220,14 @@ expand path model =
     in let
         model1 = { model | context =
             { oldContext | expanded = PT.put path () oldContext.expanded } }
+    in syncCards model1
+
+collapse : CardPath -> Model -> (Model, Actions)
+collapse path model =
+    let oldContext = model.context
+    in let
+        model1 = { model | context =
+            { oldContext | expanded = PT.drop path oldContext.expanded } }
     in syncCards model1
 
 setCardText : Cards -> CardID -> String -> Cards
