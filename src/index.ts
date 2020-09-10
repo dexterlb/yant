@@ -42,7 +42,7 @@ async function process_save_card(ctx: Context, card: any): Promise<void> {
     }
 
     console.log("saving card at ", card.id, " : ", card)
-    
+
     let storage = window.localStorage;
     storage.setItem('card_' + id, JSON.stringify(card))
 }

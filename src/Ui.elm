@@ -6,8 +6,13 @@ import Html.Events exposing (onClick)
 import Element
 import Element.Input
 
+import Random
+import Random.String
+import Random.Char
+
 import Dict as Dict
 import List.Nonempty as NE
+import Set exposing (Set)
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
@@ -38,6 +43,9 @@ type Msg
     = TextChanged String
     | SelectCard  CardPath
     | EditCard    CardPath
+    | AddChild    CardPath
+    | Expand      CardPath
+    | AddChildWithID CardPath CardID
     | SaveEdit
 
 type InputMsg
@@ -52,17 +60,19 @@ type alias Actions = List Action
 
 init : CardID -> (Model, Cmd m, Actions)
 init rootCard =
-    (
-        { cards = noCards
-        , rootCard = rootCard
-        , context =
-            { state = None
-            , expanded = PT.empty
+    let
+        model =
+            { cards = noCards
+            , rootCard = rootCard
+            , context =
+                { state = None
+                , expanded = PT.empty
+                }
             }
-        }
-    ,   Cmd.none
-    ,   [GetCard "root"]
-    )
+    in let
+        (model1, actions) = syncCards model
+    in
+        (model1, Cmd.none, actions)
 
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = let oldContext = model.context in case msg of
@@ -75,6 +85,17 @@ update msg model = let oldContext = model.context in case msg of
         Editing ectx -> let (cards, cmd, actions) = editCard ectx model.cards in
             ( { model | cards = cards, context = { oldContext | state = None } }, cmd, actions )
         _ -> (model, Cmd.none, [])
+    AddChild path -> ( model, randomID (AddChildWithID path), [])
+    AddChildWithID path id ->
+        let model1 = { model | cards = addChildToCard id (NE.head path) model.cards }
+        in let (model2, actions) = expand path model1
+        in
+            ( model2, Cmd.none, (saveCard (NE.head path) model2.cards) ++ actions )
+    Expand path ->
+        let (model1, actions) = expand path model
+        in
+            ( model1, Cmd.none, actions )
+
 
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
 pushMsg inMsg model = case inMsg of
@@ -148,6 +169,14 @@ viewCardButtonBar path card = div [ class "button-bar" ]
         { onPress = Just (EditCard path)
         , label = Element.text "edit"
         }
+    , Element.layout [] <| Element.Input.button []
+        { onPress = Just (AddChild path)
+        , label = Element.text "add child"
+        }
+    , Element.layout [] <| Element.Input.button []
+        { onPress = Just (Expand path)
+        , label = Element.text "expand"
+        }
     ]
 
 
@@ -161,6 +190,14 @@ view { context, cards, rootCard } =
 
 isExpanded : Context -> CardPath -> Bool
 isExpanded ctx path = PT.member path ctx.expanded
+
+expand : CardPath -> Model -> (Model, Actions)
+expand path model =
+    let oldContext = model.context
+    in let
+        model1 = { model | context =
+            { oldContext | expanded = PT.put path () oldContext.expanded } }
+    in syncCards model1
 
 setCardText : Cards -> CardID -> String -> Cards
 setCardText cards id text = Cards.update id (\card -> { card | text = text }) cards
@@ -184,3 +221,45 @@ editCard ectx cards = case Dict.get (NE.head ectx.path) cards of
     Nothing -> (cards, Cmd.none, [])
     Just oldCard -> let card = { oldCard | text = ectx.text } in
         (Cards.add card cards, Cmd.none, [SaveCard card])
+
+saveCard : CardID -> Cards -> Actions
+saveCard id cards = case Dict.get id cards of
+    Nothing -> []
+    Just card -> [SaveCard card]
+
+addChildToCard : CardID -> CardID -> Cards -> Cards
+addChildToCard childID parentID cards =
+    case Dict.get parentID cards of
+        Nothing -> cards
+        Just oldParent -> let parent = { oldParent | children = childID :: oldParent.children } in
+            Cards.add parent cards
+
+syncCards : Model -> (Model, Actions)
+syncCards m = (m, List.map GetCard (Set.toList <| missingCards m))
+
+missingCards : Model -> Set CardID
+missingCards m = Set.diff (neededCards m) (Set.fromList <| Dict.keys m.cards)
+
+neededCards : Model -> Set CardID
+neededCards m = neededCardsFrom (NE.fromElement m.rootCard) m
+
+-- todo: tail optimisation
+neededCardsFrom : CardPath -> Model -> Set CardID
+neededCardsFrom path m =
+    Set.insert (NE.head path) <|
+        case isExpanded m.context path of
+            True ->
+                (List.foldr
+                    (\child all -> Set.union all (neededCardsFrom (NE.cons child path) m)) Set.empty
+                    (childrenOf m.cards (NE.head path)))
+            False -> Set.empty
+
+childrenOf : Cards -> CardID -> List CardID
+childrenOf cards id = case Dict.get id cards of
+    Nothing -> []
+    Just card -> card.children
+-- Utils
+
+randomID : (String -> Msg) -> Cmd Msg
+randomID f = Random.generate f
+    (Random.String.string 32 Random.Char.english)
