@@ -25,7 +25,7 @@ async function process_get_card(ctx: Context, cardID: string): Promise<void> {
     if (card == null) {
         ctx.app.ports.gotCard.send({
             id: cardID,
-            text: "<empty>",
+            text: "",
             children: [],
         })
     } else {

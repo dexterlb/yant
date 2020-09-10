@@ -1,6 +1,6 @@
 module Cards exposing
     ( CardID, CardPath, Cards, noCards, Card, add
-    , encodeCardID, decodeCard
+    , encodeCardID, decodeCard, update
     )
 
 import List.Nonempty as NE exposing (Nonempty)
@@ -23,6 +23,9 @@ noCards = Dict.empty
 
 add : Card -> Cards -> Cards
 add card cards = Dict.insert card.id card cards
+
+update : CardID -> (Card -> Card) -> Cards -> Cards
+update id f cards = Dict.update id (Maybe.map f) cards
 
 encodeCardID : CardID -> JE.Value
 encodeCardID = JE.string
