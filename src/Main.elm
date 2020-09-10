@@ -52,7 +52,7 @@ emptyModel : Url -> Key -> Model
 emptyModel url key =
     { url = url
     , key = key
-    , ui  = Ui.init
+    , ui  = Ui.init "root"
     }
 
 -- UPDATE

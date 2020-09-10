@@ -1,9 +1,9 @@
 module Cards exposing
-    (Cards, noCards
+    (CardID, CardPath, Cards, noCards, Card
     )
 
-import Dict exposing (Dict)
-import Dict
+import List.Nonempty as NE exposing (Nonempty)
+import Dict as Dict exposing (Dict)
 
 type alias CardID = String
 
@@ -16,3 +16,5 @@ type alias Cards = Dict CardID Card
 
 noCards : Cards
 noCards = Dict.empty
+
+type alias CardPath = Nonempty CardID
