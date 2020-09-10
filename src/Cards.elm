@@ -1,6 +1,6 @@
 module Cards exposing
-    ( CardID, CardPath, Cards, noCards, Card, add
-    , encodeCardID, decodeCard, update
+    ( CardID, CardPath, Cards, noCards, Card, add, update
+    , encodeCardID, decodeCard, encodeCard
     )
 
 import List.Nonempty as NE exposing (Nonempty)
@@ -39,4 +39,10 @@ decodeCard = JD.map3 Card
     (JD.field "text" JD.string)
     (JD.field "children" <| JD.list decodeCardID)
 
+encodeCard : Card -> JE.Value
+encodeCard card = JE.object
+    [ ("id",       encodeCardID card.id)
+    , ("text",     JE.string card.text)
+    , ("children", JE.list encodeCardID card.children)
+    ]
 type alias CardPath = Nonempty CardID

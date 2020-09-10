@@ -45,6 +45,7 @@ type InputMsg
 
 type Action
     = GetCard CardID
+    | SaveCard Card
 
 type alias Actions = List Action
 
@@ -182,4 +183,4 @@ editCard : EditContext -> Cards -> (Cards, Cmd Msg, Actions)
 editCard ectx cards = case Dict.get (NE.head ectx.path) cards of
     Nothing -> (cards, Cmd.none, [])
     Just oldCard -> let card = { oldCard | text = ectx.text } in
-        (Cards.add card cards, Cmd.none, [])
+        (Cards.add card cards, Cmd.none, [SaveCard card])

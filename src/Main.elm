@@ -92,7 +92,8 @@ performUiActions model actions = Cmd.batch <| List.map (performUiAction model) a
 
 performUiAction : Model -> Ui.Action -> Cmd Msg
 performUiAction model action = case action of
-    Ui.GetCard id -> Storage.getCard <| Cards.encodeCardID id
+    Ui.GetCard  id   -> Storage.getCard  <| Cards.encodeCardID id
+    Ui.SaveCard card -> Storage.saveCard <| Cards.encodeCard   card
 
 -- SUBSCRIPTIONS
 
@@ -104,7 +105,7 @@ subscriptions _ = Sub.batch
 
 handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg
 handleJson handler decoder v = case JD.decodeValue decoder v of
-    Err err  -> Debug.todo "error" err
+    Err err  -> Debug.todo (JD.errorToString err)
     Ok  data -> handler data
 
 -- VIEW
