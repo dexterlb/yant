@@ -1,10 +1,8 @@
 module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
 
-import Html exposing (Html, div, text)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
-import Element
-import Element.Input
+import Html exposing (Html, div, text, button, textarea)
+import Html.Attributes exposing (class, value, placeholder)
+import Html.Events exposing (onClick, onInput)
 
 import Random
 import Random.String
@@ -143,17 +141,14 @@ viewCardBody path card state = case state of
 
 viewEditingCardBody : CardPath -> Card -> EditContext -> Html Msg
 viewEditingCardBody path card ectx = div [ class "card-body", class "editing" ]
-    [ Element.layout [] <| Element.Input.multiline []
-        { text = ectx.text
-        , spellcheck = False
-        , placeholder = Just (Element.Input.placeholder [] (Element.text "enter some note text"))
-        , label = Element.Input.labelHidden "note text"
-        , onChange = TextChanged
-        }
-    , Element.layout [] <| Element.Input.button []
-        { onPress = Just SaveEdit
-        , label = Element.text "save"
-        }
+    [ textarea
+        [ value ectx.text
+        , placeholder "enter some note text"
+        , onInput TextChanged
+        ] []
+    , button
+        [ onClick SaveEdit ]
+        [ text "save" ]
     ]
 
 viewPlainCardBody : CardPath -> Card -> Html Msg
@@ -172,34 +167,26 @@ viewSelectedCardBody path card = div [ class "card-body", class "selected" ]
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
 viewCardButtonBar path card = div [ class "button-bar" ]
-    [ Element.layout [] <| Element.Input.button []
-        { onPress = Just (EditCard path)
-        , label = Element.text "edit"
-        }
-    , Element.layout [] <| Element.Input.button []
-        { onPress = Just (AddChild path)
-        , label = Element.text "add child"
-        }
-    , Element.layout [] <| Element.Input.button []
-        { onPress = Just (Expand path)
-        , label = Element.text "expand"
-        }
+    [ button
+        [ onClick (EditCard path) ]
+        [ text "edit" ]
+    , button
+        [ onClick (AddChild path) ]
+        [ text "add child" ]
     ]
 
 viewExpandedCardControls : CardPath -> Context -> Html Msg
 viewExpandedCardControls path ctx = div [ class "controls" ]
-    [ Element.layout [] <| Element.Input.button []
-        { onPress = Just (Collapse path)
-        , label = Element.text "collapse"
-        }
+    [ button
+        [ onClick (Collapse path) ]
+        [ text "collapse" ]
     ]
 
 viewCollapsedCardControls : CardPath -> Context -> Html Msg
 viewCollapsedCardControls path ctx = div [ class "controls" ]
-    [ Element.layout [] <| Element.Input.button []
-        { onPress = Just (Expand path)
-        , label = Element.text "expand"
-        }
+    [ button
+        [ onClick (Expand path) ]
+        [ text "expand" ]
     ]
 
 
