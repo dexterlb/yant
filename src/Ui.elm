@@ -112,14 +112,12 @@ viewCard ctx path cards = case Dict.get (NE.head path) cards of
     Just card -> case isExpanded ctx path of
         True ->
             div [ class "card", class "expanded" ]
-                [ viewExpandedCardControls path ctx
-                , viewCardBody path card ctx.state
+                [ viewCardBody ctx path card
                 , viewCardChildren ctx path cards card.children
                 ]
         False ->
             div [ class "card", class "collapsed" ]
-                [ viewCollapsedCardControls path ctx
-                , viewCardBody path card ctx.state
+                [ viewCardBody ctx path card
                 ]
 
 viewCardChildren : Context -> CardPath -> Cards -> List CardID -> Html Msg
@@ -127,21 +125,22 @@ viewCardChildren ctx path cards childIDs =
     div [ class "card-children" ]
         (List.map (\id -> viewCard ctx (NE.cons id path) cards) childIDs)
 
-viewCardBody : CardPath -> Card -> UserState -> Html Msg
-viewCardBody path card state = case state of
-    None -> viewPlainCardBody path card
+viewCardBody : Context -> CardPath -> Card -> Html Msg
+viewCardBody ctx path card = case ctx.state of
+    None -> viewPlainCardBody ctx path card
     Editing ectx -> case ectx.path == path of
-        True -> viewEditingCardBody path card ectx
-        False -> viewPlainCardBody path card
+        True -> viewEditingCardBody ctx path card ectx
+        False -> viewPlainCardBody ctx path card
     Selected spath -> case spath == path of
-        True -> viewSelectedCardBody path card
-        False -> viewPlainCardBody path card
+        True -> viewSelectedCardBody ctx path card
+        False -> viewPlainCardBody ctx path card
 
 
 
-viewEditingCardBody : CardPath -> Card -> EditContext -> Html Msg
-viewEditingCardBody path card ectx = div [ class "card-body", class "editing" ]
-    [ textarea
+viewEditingCardBody : Context -> CardPath -> Card -> EditContext -> Html Msg
+viewEditingCardBody ctx path card ectx = div [ class "card-body", class "editing" ]
+    [ viewCardControls ctx path
+    , textarea
         [ value ectx.text
         , placeholder "enter some note text"
         , onInput TextChanged
@@ -151,19 +150,27 @@ viewEditingCardBody path card ectx = div [ class "card-body", class "editing" ]
         [ text "save" ]
     ]
 
-viewPlainCardBody : CardPath -> Card -> Html Msg
-viewPlainCardBody path card = div
+viewPlainCardBody : Context -> CardPath -> Card -> Html Msg
+viewPlainCardBody ctx path card = div
     [ class "card-body", class "plain"
     , onClick (SelectCard path)
     ]
+    [ viewCardControls ctx path
+    , viewCardContent card ]
+
+viewSelectedCardBody : Context -> CardPath -> Card -> Html Msg
+viewSelectedCardBody ctx path card = div [ class "card-body", class "selected" ]
+    [ viewCardControls ctx path
+    , viewCardContent card
+    , viewCardButtonBar path card]
+
+viewCardContent : Card -> Html Msg
+viewCardContent card = div
+    [ class "card-content" ]
     [ text (case card.text of
         "" -> "<empty>"
         text -> text ) ]
 
-viewSelectedCardBody : CardPath -> Card -> Html Msg
-viewSelectedCardBody path card = div [ class "card-body", class "selected" ]
-    [ text card.text
-    , viewCardButtonBar path card]
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
 viewCardButtonBar path card = div [ class "button-bar" ]
@@ -175,18 +182,27 @@ viewCardButtonBar path card = div [ class "button-bar" ]
         [ text "add child" ]
     ]
 
-viewExpandedCardControls : CardPath -> Context -> Html Msg
-viewExpandedCardControls path ctx = div [ class "controls" ]
+viewCardControls : Context -> CardPath -> Html Msg
+viewCardControls ctx path = case isExpanded ctx path of
+    True  -> viewExpandedCardControls  ctx path
+    False -> viewCollapsedCardControls ctx path
+
+viewExpandedCardControls : Context -> CardPath -> Html Msg
+viewExpandedCardControls ctx path = div [ class "controls" ]
     [ button
         [ onClick (Collapse path) ]
-        [ text "collapse" ]
+        [ div [ class "sr-only" ] [ text "collapse" ]
+        , div [ class "icon" ]    [ text "▼" ]
+        ]
     ]
 
-viewCollapsedCardControls : CardPath -> Context -> Html Msg
-viewCollapsedCardControls path ctx = div [ class "controls" ]
+viewCollapsedCardControls : Context -> CardPath -> Html Msg
+viewCollapsedCardControls ctx path = div [ class "controls" ]
     [ button
         [ onClick (Expand path) ]
-        [ text "expand" ]
+        [ div [ class "sr-only" ] [ text "expand" ]
+        , div [ class "icon" ]    [ text "▶" ]
+        ]
     ]
 
 

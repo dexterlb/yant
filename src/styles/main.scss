@@ -1,7 +1,27 @@
-body {
-    color: green;
+@import 'sr_only';
+
+.card {
+    .card-body {
+        display: flex;
+        flex-direction: row;
+
+        &.selected {
+            background-color: #ccc;
+        }
+
+        .controls {
+            flex-basis: content;
+
+            button {
+                background-color: none;
+                border: none;
+            }
+        }
+    }
+
+    .card-children {
+        padding-left: 1em;
+    }
 }
 
-.card-children {
-    padding-left: 1em;
-}
+
