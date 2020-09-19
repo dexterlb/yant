@@ -5,16 +5,54 @@
         display: flex;
         flex-direction: row;
 
+        border: 1px solid rgba(1, 1, 1, 0);
         &.selected {
-            background-color: #ccc;
+            border: 1px solid #dd1111;
         }
+
+        margin-top: 1px;
+        margin-bottom: 1px;
 
         .controls {
             flex-basis: content;
 
             button {
-                background-color: none;
+                background-color: Transparent;
                 border: none;
+                border-radius: 100%;
+                outline: none;
+
+                &:hover {
+                    background-color: rgba(0.3, 0.5, 0.2, 0.3);
+                }
+            }
+        }
+
+        .card-content {
+            > div { // markdown container
+
+                // remove top and bottom margins of markdown paragraphs
+                > span:first-child {
+                    > *:first-child {
+                        margin-top: 0px;
+                        > *:first-child {
+                            margin-top: 0px;
+                        }
+                    }
+                }
+
+                > span:last-child {
+                    > *:last-child {
+                        margin-bottom: 0px;
+                        > *:first-child {
+                            margin-top: 0px;
+                        }
+                    }
+                }
+
+                p, h1, h2, h3, h4, h5, h6 {
+                    background-color: Transparent !important;
+                }
             }
         }
     }

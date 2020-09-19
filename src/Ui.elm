@@ -1,8 +1,12 @@
 module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
 
 import Html exposing (Html, div, text, button, textarea)
-import Html.Attributes exposing (class, value, placeholder)
+import Html.Attributes exposing (class, value, placeholder, style)
 import Html.Events exposing (onClick, onInput)
+import Color
+
+import Markdown.Option
+import Markdown.Render
 
 import Random
 import Random.String
@@ -14,6 +18,7 @@ import Set exposing (Set)
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
+import Utils
 
 
 type alias Model =
@@ -37,6 +42,11 @@ type UserState
     | Selected CardPath
     | Editing EditContext
 
+type CardState
+    = CardNone
+    | CardSelected
+    | CardEditing
+
 type Msg
     = TextChanged String
     | SelectCard  CardPath
@@ -46,6 +56,7 @@ type Msg
     | Collapse    CardPath
     | AddChildWithID CardPath CardID
     | SaveEdit
+    | MarkdownMsg Markdown.Render.MarkdownMsg
 
 type InputMsg
     = GotCard Card
@@ -98,6 +109,7 @@ update msg model = let oldContext = model.context in case msg of
         let (model1, actions) = collapse path model
         in
             ( model1, Cmd.none, actions )
+    MarkdownMsg _ -> ( model, Cmd.none, [] )
 
 
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
@@ -126,19 +138,21 @@ viewCardChildren ctx path cards childIDs =
         (List.map (\id -> viewCard ctx (NE.cons id path) cards) childIDs)
 
 viewCardBody : Context -> CardPath -> Card -> Html Msg
-viewCardBody ctx path card = case ctx.state of
-    None -> viewPlainCardBody ctx path card
-    Editing ectx -> case ectx.path == path of
-        True -> viewEditingCardBody ctx path card ectx
-        False -> viewPlainCardBody ctx path card
-    Selected spath -> case spath == path of
-        True -> viewSelectedCardBody ctx path card
-        False -> viewPlainCardBody ctx path card
+viewCardBody ctx path card =
+    case ctx.state of
+        None -> viewPlainCardBody ctx path card
+        Editing ectx -> case ectx.path == path of
+            True -> viewEditingCardBody ctx path card ectx
+            False -> viewPlainCardBody ctx path card
+        Selected spath -> case spath == path of
+            True -> viewSelectedCardBody ctx path card
+            False -> viewPlainCardBody ctx path card
 
 
 
 viewEditingCardBody : Context -> CardPath -> Card -> EditContext -> Html Msg
-viewEditingCardBody ctx path card ectx = div [ class "card-body", class "editing" ]
+viewEditingCardBody ctx path card ectx = div
+    [ class "card-body", class "editing", cardColour path CardEditing ]
     [ viewCardControls ctx path
     , textarea
         [ value ectx.text
@@ -154,12 +168,15 @@ viewPlainCardBody : Context -> CardPath -> Card -> Html Msg
 viewPlainCardBody ctx path card = div
     [ class "card-body", class "plain"
     , onClick (SelectCard path)
+    , cardColour path CardNone
     ]
     [ viewCardControls ctx path
     , viewCardContent card ]
 
 viewSelectedCardBody : Context -> CardPath -> Card -> Html Msg
-viewSelectedCardBody ctx path card = div [ class "card-body", class "selected" ]
+viewSelectedCardBody ctx path card = div
+    [ class "card-body", class "selected", cardColour path CardSelected ]
+
     [ viewCardControls ctx path
     , viewCardContent card
     , viewCardButtonBar path card]
@@ -167,9 +184,9 @@ viewSelectedCardBody ctx path card = div [ class "card-body", class "selected" ]
 viewCardContent : Card -> Html Msg
 viewCardContent card = div
     [ class "card-content" ]
-    [ text (case card.text of
+    [ Markdown.Render.toHtml Markdown.Option.ExtendedMath (case card.text of
         "" -> "<empty>"
-        text -> text ) ]
+        text -> text ) |> Html.map MarkdownMsg ]
 
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
@@ -297,3 +314,19 @@ childrenOf cards id = case Dict.get id cards of
 randomID : (String -> Msg) -> Cmd Msg
 randomID f = Random.generate f
     (Random.String.string 32 Random.Char.english)
+
+cardColour : CardPath -> CardState -> Html.Attribute Msg
+cardColour path state =
+    let
+        hue = interpolate (25 / 360.0) (200 / 360.0) (Utils.hash01 (NE.head path))
+        sat = case state of
+            CardNone      -> 0.2
+            CardSelected  -> 0.5
+            CardEditing   -> 0
+    in let
+        colour = Color.hsl hue sat 0.8 |> Color.toCssString
+    in
+        style "background-color" colour
+
+interpolate : Float -> Float -> Float -> Float
+interpolate a b x = x * (b - a) + a
