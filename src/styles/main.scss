@@ -18,14 +18,17 @@
 
             button {
                 background-color: rgba(100, 100, 100, 0.1);
-                padding: 0.4em;
+                width: 1em;
+                padding: 0px;
 
                 height: 100%;
                 border: none;
                 outline: none;
 
-                &:hover {
-                    background-color: rgba(100, 100, 100, 0.5);
+                &.expander {
+                    &:hover {
+                        background-color: rgba(100, 100, 100, 0.5);
+                    }
                 }
             }
         }
@@ -84,12 +87,13 @@
                 }
             }
         }
-
-        .card-children {
-            padding-left: 1em;
-        }
     }
 
+    .card-children {
+        padding-left: 1em;
+    }
 }
 
-
+.transparent-hack {
+    color: Transparent;
+}

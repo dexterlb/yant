@@ -1,8 +1,8 @@
 module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
 
 import Html exposing (Html, div, text, button, textarea)
-import Html.Attributes exposing (class, value, placeholder, style)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes exposing (class, value, placeholder, style, disabled)
+import Html.Events as HE
 import Color
 
 import Markdown.Option
@@ -15,6 +15,7 @@ import Random.Char
 import Dict as Dict
 import List.Nonempty as NE
 import Set exposing (Set)
+import Json.Decode as JD
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
@@ -48,15 +49,18 @@ type CardState
     | CardEditing
 
 type Msg
-    = TextChanged String
-    | SelectCard  CardPath
-    | EditCard    CardPath
-    | AddChild    CardPath
-    | Expand      CardPath
-    | Collapse    CardPath
-    | AddChildWithID CardPath CardID
+    = TextChanged     String
+    | SelectCard      CardPath
+    | DeselectCard
+    | EditCard        CardPath
+    | UnlinkCard      CardPath
+    | AddChild        CardPath
+    | Expand          CardPath
+    | Collapse        CardPath
+    | AddChildWithID  CardPath CardID
     | SaveEdit
-    | MarkdownMsg Markdown.Render.MarkdownMsg
+    | CancelEdit
+    | MarkdownMsg     Markdown.Render.MarkdownMsg
 
 type InputMsg
     = GotCard Card
@@ -88,12 +92,23 @@ update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = let oldContext = model.context in case msg of
     TextChanged text -> ( updateEditContext (\ectx -> { ectx | text = text }) model, Cmd.none, [])
     SelectCard path  -> ( newState (Selected path) model, Cmd.none, [] )
+    DeselectCard     -> ( newState None model, Cmd.none, [] )
     EditCard path    -> case Dict.get (NE.head path) model.cards of
         Nothing -> (model, Cmd.none, [])
         Just card -> ( newState (Editing { path = path, text = card.text }) model, Cmd.none, [])
+    UnlinkCard path -> case NE.tail path |> List.head of
+        Nothing -> Debug.todo "unlinking card without parent"
+        Just parent ->
+            let model1 = { model | cards = delChildFromCard parent (NE.head path) model.cards }
+            in
+                ( model1, Cmd.none, (saveCard (NE.head path) model1.cards) )
     SaveEdit -> case model.context.state of
         Editing ectx -> let (cards, cmd, actions) = editCard ectx model.cards in
             ( { model | cards = cards, context = { oldContext | state = None } }, cmd, actions )
+        _ -> (model, Cmd.none, [])
+    CancelEdit -> case model.context.state of
+        Editing ectx ->
+            ( { model | context = { oldContext | state = None } }, Cmd.none, [] )
         _ -> (model, Cmd.none, [])
     AddChild path -> ( model, randomID (AddChildWithID path), [])
     AddChildWithID path id ->
@@ -153,17 +168,20 @@ viewCardBody ctx path card =
 viewEditingCardBody : Context -> CardPath -> Card -> EditContext -> Html Msg
 viewEditingCardBody ctx path card ectx = div
     [ class "card-body", class "editing", cardColour path CardEditing ]
-    [ viewCardControls ctx path
+    [ viewCardControls ctx path card
     , div [ class "card-vbox" ]
         [ textarea
             [ value ectx.text
             , placeholder "enter some note text"
-            , onInput TextChanged
+            , HE.onInput TextChanged
             ] []
         , div [ class "button-bar" ]
             [ button
                 [ onClick SaveEdit ]
                 [ text "save" ]
+            , button
+                [ onClick CancelEdit ]
+                [ text "cancel" ]
             ]
         ]
     ]
@@ -174,7 +192,7 @@ viewPlainCardBody ctx path card = div
     , onClick (SelectCard path)
     , cardColour path CardNone
     ]
-    [ viewCardControls ctx path
+    [ viewCardControls ctx path card
     , div [ class "card-vbox" ]
         [ viewCardContent card
         ]
@@ -184,7 +202,7 @@ viewSelectedCardBody : Context -> CardPath -> Card -> Html Msg
 viewSelectedCardBody ctx path card = div
     [ class "card-body", class "selected", cardColour path CardSelected ]
 
-    [ viewCardControls ctx path
+    [ viewCardControls ctx path card
     , div [ class "card-vbox" ]
         [ viewCardButtonBar path card
         , viewCardContent card
@@ -202,22 +220,32 @@ viewCardContent card = div
 viewCardButtonBar : CardPath -> Card -> Html Msg
 viewCardButtonBar path card = div [ class "button-bar" ]
     [ button
+        [ onClick DeselectCard ]
+        [ text "deselect" ]
+    , button
         [ onClick (EditCard path) ]
         [ text "edit" ]
+    , button
+        [ onClick (UnlinkCard path) ]
+        [ text "unlink" ]
     , button
         [ onClick (AddChild path) ]
         [ text "add child" ]
     ]
 
-viewCardControls : Context -> CardPath -> Html Msg
-viewCardControls ctx path = case isExpanded ctx path of
-    True  -> viewExpandedCardControls  ctx path
-    False -> viewCollapsedCardControls ctx path
+viewCardControls : Context -> CardPath -> Card -> Html Msg
+viewCardControls ctx path card =
+    case List.isEmpty card.children of
+        True  -> viewChildlessCardControls  ctx path
+        False ->
+            case isExpanded ctx path of
+                True  -> viewExpandedCardControls  ctx path
+                False -> viewCollapsedCardControls ctx path
 
 viewExpandedCardControls : Context -> CardPath -> Html Msg
 viewExpandedCardControls ctx path = div [ class "controls" ]
     [ button
-        [ onClick (Collapse path) ]
+        [ class "expander", onClick (Collapse path) ]
         [ div [ class "sr-only" ] [ text "collapse" ]
         , div [ class "icon" ]    [ text "▼" ]
         ]
@@ -226,9 +254,18 @@ viewExpandedCardControls ctx path = div [ class "controls" ]
 viewCollapsedCardControls : Context -> CardPath -> Html Msg
 viewCollapsedCardControls ctx path = div [ class "controls" ]
     [ button
-        [ onClick (Expand path) ]
+        [ class "expander", onClick (Expand path) ]
         [ div [ class "sr-only" ] [ text "expand" ]
         , div [ class "icon" ]    [ text "▶" ]
+        ]
+    ]
+
+viewChildlessCardControls : Context -> CardPath -> Html Msg
+viewChildlessCardControls ctx path = div [ class "controls" ]
+    [ button
+        [ class "disabled-expander", disabled True ]
+        [ div [ class "sr-only" ] [ text "has no children" ]
+        , div [ class "transparent-hack" ] [ text "." ]
         ]
     ]
 
@@ -295,6 +332,13 @@ addChildToCard childID parentID cards =
         Just oldParent -> let parent = { oldParent | children = childID :: oldParent.children } in
             Cards.add parent cards
 
+delChildFromCard : CardID -> CardID -> Cards -> Cards
+delChildFromCard cardID childID cards =
+    case Dict.get cardID cards of
+        Nothing -> cards
+        Just oldParent -> let parent = { oldParent | children = List.filter (\c -> c /= childID) oldParent.children } in
+            Cards.add parent cards
+
 syncCards : Model -> (Model, Actions)
 syncCards m = (m, List.map GetCard (Set.toList <| missingCards m))
 
@@ -340,3 +384,6 @@ cardColour path state =
 
 interpolate : Float -> Float -> Float -> Float
 interpolate a b x = x * (b - a) + a
+
+onClick : msg -> Html.Attribute msg
+onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))
