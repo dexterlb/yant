@@ -154,14 +154,18 @@ viewEditingCardBody : Context -> CardPath -> Card -> EditContext -> Html Msg
 viewEditingCardBody ctx path card ectx = div
     [ class "card-body", class "editing", cardColour path CardEditing ]
     [ viewCardControls ctx path
-    , textarea
-        [ value ectx.text
-        , placeholder "enter some note text"
-        , onInput TextChanged
-        ] []
-    , button
-        [ onClick SaveEdit ]
-        [ text "save" ]
+    , div [ class "card-vbox" ]
+        [ textarea
+            [ value ectx.text
+            , placeholder "enter some note text"
+            , onInput TextChanged
+            ] []
+        , div [ class "button-bar" ]
+            [ button
+                [ onClick SaveEdit ]
+                [ text "save" ]
+            ]
+        ]
     ]
 
 viewPlainCardBody : Context -> CardPath -> Card -> Html Msg
@@ -171,15 +175,21 @@ viewPlainCardBody ctx path card = div
     , cardColour path CardNone
     ]
     [ viewCardControls ctx path
-    , viewCardContent card ]
+    , div [ class "card-vbox" ]
+        [ viewCardContent card
+        ]
+    ]
 
 viewSelectedCardBody : Context -> CardPath -> Card -> Html Msg
 viewSelectedCardBody ctx path card = div
     [ class "card-body", class "selected", cardColour path CardSelected ]
 
     [ viewCardControls ctx path
-    , viewCardContent card
-    , viewCardButtonBar path card]
+    , div [ class "card-vbox" ]
+        [ viewCardButtonBar path card
+        , viewCardContent card
+        ]
+    ]
 
 viewCardContent : Card -> Html Msg
 viewCardContent card = div
@@ -322,7 +332,7 @@ cardColour path state =
         sat = case state of
             CardNone      -> 0.2
             CardSelected  -> 0.5
-            CardEditing   -> 0
+            CardEditing   -> 0.5
     in let
         colour = Color.hsl hue sat 0.8 |> Color.toCssString
     in

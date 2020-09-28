@@ -17,49 +17,79 @@
             flex-basis: content;
 
             button {
-                background-color: Transparent;
+                background-color: rgba(100, 100, 100, 0.1);
+                padding: 0.4em;
+
+                height: 100%;
                 border: none;
-                border-radius: 100%;
                 outline: none;
 
                 &:hover {
-                    background-color: rgba(0.3, 0.5, 0.2, 0.3);
+                    background-color: rgba(100, 100, 100, 0.5);
                 }
             }
         }
 
-        .card-content {
-            > div { // markdown container
+        .card-vbox {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
 
-                // remove top and bottom margins of markdown paragraphs
-                > span:first-child {
-                    > *:first-child {
-                        margin-top: 0px;
-                        > *:first-child {
-                            margin-top: 0px;
-                        }
+            .button-bar {
+                background-color: rgba(100, 100, 100, 0.1);
+                width: 100%;
+
+                button {
+                    background-color: rgba(100, 100, 100, 0.3);
+                    // padding: 0.4em;
+                    margin: 0.2em;
+
+                    border: none;
+                    outline: none;
+
+                    &:hover {
+                        background-color: rgba(100, 100, 100, 0.5);
                     }
                 }
+            }
 
-                > span:last-child {
-                    > *:last-child {
-                        margin-bottom: 0px;
+            .card-content {
+                margin-left: 0.4em;
+
+                > div { // markdown container
+
+                    // remove top and bottom margins of markdown paragraphs
+                    > span:first-child {
                         > *:first-child {
                             margin-top: 0px;
+                            > *:first-child {
+                                margin-top: 0px;
+                            }
                         }
                     }
-                }
 
-                p, h1, h2, h3, h4, h5, h6 {
-                    background-color: Transparent !important;
+                    > span:last-child {
+                        > *:last-child {
+                            margin-bottom: 0px;
+                            > *:first-child {
+                                margin-top: 0px;
+                            }
+                        }
+                    }
+
+                    p, h1, h2, h3, h4, h5, h6, li, ul {
+                        background-color: Transparent !important;
+                        list-style: none;
+                    }
                 }
             }
         }
+
+        .card-children {
+            padding-left: 1em;
+        }
     }
 
-    .card-children {
-        padding-left: 1em;
-    }
 }
 
 
