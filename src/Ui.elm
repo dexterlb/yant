@@ -12,7 +12,7 @@ import Random
 import Random.String
 import Random.Char
 
-import Dict as Dict
+import Dict as Dict exposing (Dict)
 import List.Nonempty as NE
 import Set exposing (Set)
 import Json.Decode as JD
@@ -38,10 +38,19 @@ type alias EditContext =
     , text: String
     }
 
+type InsertMode
+    = FirstChild
+    | LastChild
+    | Before
+    | After
+
+type alias Insertion = (InsertMode, CardPath)
+
 type UserState
     = None
     | Selected CardPath
     | Editing EditContext
+    | PendingEdit CardPath
 
 type CardState
     = CardNone
@@ -54,10 +63,10 @@ type Msg
     | DeselectCard
     | EditCard        CardPath
     | UnlinkCard      CardPath
-    | AddChild        CardPath
+    | AddChild        Insertion
     | Expand          CardPath
     | Collapse        CardPath
-    | AddChildWithID  CardPath CardID
+    | AddChildWithID  Insertion CardID
     | SaveEdit
     | CancelEdit
     | MarkdownMsg     Markdown.Render.MarkdownMsg
@@ -93,9 +102,8 @@ update msg model = let oldContext = model.context in case msg of
     TextChanged text -> ( updateEditContext (\ectx -> { ectx | text = text }) model, Cmd.none, [])
     SelectCard path  -> ( newState (Selected path) model, Cmd.none, [] )
     DeselectCard     -> ( newState None model, Cmd.none, [] )
-    EditCard path    -> case Dict.get (NE.head path) model.cards of
-        Nothing -> (model, Cmd.none, [])
-        Just card -> ( newState (Editing { path = path, text = card.text }) model, Cmd.none, [])
+    EditCard path    ->
+        ( editMode path model, Cmd.none, [])
     UnlinkCard path -> case NE.tail path |> List.head of
         Nothing -> Debug.todo "unlinking card without parent"
         Just parent ->
@@ -110,12 +118,17 @@ update msg model = let oldContext = model.context in case msg of
         Editing ectx ->
             ( { model | context = { oldContext | state = None } }, Cmd.none, [] )
         _ -> (model, Cmd.none, [])
-    AddChild path -> ( model, randomID (AddChildWithID path), [])
-    AddChildWithID path id ->
-        let model1 = { model | cards = addChildToCard id (NE.head path) model.cards }
-        in let (model2, actions) = expand path model1
+    AddChild ins -> ( model, randomID (AddChildWithID ins), [])
+    AddChildWithID ins id ->
+        let (newCards, newPath) = insertChild id ins model.cards
+        in let
+            model1 = { model | cards = newCards }
+            parentPath = getParentPath newPath
+        in let (model2, actions1) = expand parentPath model1
+        in let
+            (model3, actions2) = ( model2, (saveCard (NE.head parentPath) model2.cards) ++ actions1 )
         in
-            ( model2, Cmd.none, (saveCard (NE.head path) model2.cards) ++ actions )
+            ( newState (PendingEdit newPath) model3, Cmd.none, actions2 )
     Expand path ->
         let (model1, actions) = expand path model
         in
@@ -126,11 +139,23 @@ update msg model = let oldContext = model.context in case msg of
             ( model1, Cmd.none, actions )
     MarkdownMsg _ -> ( model, Cmd.none, [] )
 
+editMode : CardPath -> Model -> Model
+editMode path model = case Dict.get (NE.head path) model.cards of
+    Nothing -> model
+    Just card -> newState (Editing { path = path, text = card.text }) model
 
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
 pushMsg inMsg model = case inMsg of
     GotCard card ->
-        ( { model | cards = Cards.add card model.cards }, Cmd.none, [] )
+        let model1 = { model | cards = Cards.add card model.cards }
+        in let
+            model2 = case model1.context.state of
+                        PendingEdit path -> case (NE.head path) == card.id of
+                            True -> editMode path model1
+                            False -> model1
+                        _ -> model1
+        in
+            ( model2 , Cmd.none, [] )
 
 
 viewCard : Context -> CardPath -> Cards -> Html Msg
@@ -156,6 +181,7 @@ viewCardBody : Context -> CardPath -> Card -> Html Msg
 viewCardBody ctx path card =
     case ctx.state of
         None -> viewPlainCardBody ctx path card
+        PendingEdit _ -> viewPlainCardBody ctx path card
         Editing ectx -> case ectx.path == path of
             True -> viewEditingCardBody ctx path card ectx
             False -> viewPlainCardBody ctx path card
@@ -218,7 +244,7 @@ viewCardContent card = div
 
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
-viewCardButtonBar path card = div [ class "button-bar" ]
+viewCardButtonBar path card = div [ class "button-bar" ] (
     [ button
         [ onClick DeselectCard ]
         [ text "deselect" ]
@@ -226,12 +252,21 @@ viewCardButtonBar path card = div [ class "button-bar" ]
         [ onClick (EditCard path) ]
         [ text "edit" ]
     , button
-        [ onClick (UnlinkCard path) ]
-        [ text "unlink" ]
-    , button
-        [ onClick (AddChild path) ]
+        [ onClick (AddChild (FirstChild, path)) ]
         [ text "add child" ]
-    ]
+    ] ++ case NE.tail path |> List.isEmpty of
+        True  -> []
+        False ->
+            [ button
+                [ onClick (UnlinkCard path) ]
+                [ text "unlink" ]
+            , button
+                [ onClick (AddChild (Before, path)) ]
+                [ text "add before" ]
+            , button
+                [ onClick (AddChild (After, path)) ]
+                [ text "add after" ]
+            ])
 
 viewCardControls : Context -> CardPath -> Card -> Html Msg
 viewCardControls ctx path card =
@@ -325,6 +360,33 @@ saveCard id cards = case Dict.get id cards of
     Nothing -> []
     Just card -> [SaveCard card]
 
+insertChild : CardID -> Insertion -> Cards -> (Cards, CardPath)
+insertChild id (mode, path) cards = case mode of
+    FirstChild ->
+        ( Cards.add (fetch (NE.head path) cards |> insertFirstChild id) cards
+        , NE.cons id path )
+    LastChild  ->
+        ( Cards.add (fetch (NE.head path) cards |> insertLastChild id) cards
+        , NE.cons id path )
+    Before     ->
+        ( Cards.add (fetch (getParent path) cards |> insertChildBefore (NE.head path) id) cards
+        , NE.cons id (getParentPath path) )
+    After      ->
+        ( Cards.add (fetch (getParent path) cards |> insertChildAfter (NE.head path) id) cards
+        , NE.cons id (getParentPath path) )
+
+insertFirstChild : CardID -> Card -> Card
+insertFirstChild childID card = { card | children = childID :: card.children }
+
+insertLastChild : CardID -> Card -> Card
+insertLastChild childID card = { card | children = card.children ++ [childID] }
+
+insertChildBefore : CardID -> CardID -> Card -> Card
+insertChildBefore ref childID card = { card | children = insertBefore ref childID card.children }
+
+insertChildAfter : CardID -> CardID -> Card -> Card
+insertChildAfter ref childID card = { card | children = insertAfter ref childID card.children }
+
 addChildToCard : CardID -> CardID -> Cards -> Cards
 addChildToCard childID parentID cards =
     case Dict.get parentID cards of
@@ -363,6 +425,17 @@ childrenOf : Cards -> CardID -> List CardID
 childrenOf cards id = case Dict.get id cards of
     Nothing -> []
     Just card -> card.children
+
+getParent : CardPath -> CardID
+getParent path = case NE.tail path |> List.head of
+    Just parent -> parent
+    Nothing -> Debug.todo "looking for parent of root"
+
+getParentPath : CardPath -> CardPath
+getParentPath path = case NE.tail path |> NE.fromList of
+    Just l  -> l
+    Nothing -> Debug.todo "looking for parent of root"
+
 -- Utils
 
 randomID : (String -> Msg) -> Cmd Msg
@@ -387,3 +460,27 @@ interpolate a b x = x * (b - a) + a
 
 onClick : msg -> Html.Attribute msg
 onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))
+
+insertBefore : comparable -> comparable -> List comparable -> List comparable
+insertBefore ref item list = case list of
+    []      -> [item]
+    x :: xs -> case x == ref of
+        True  -> item :: x :: xs
+        False -> x :: (insertBefore ref item xs)
+
+insertAfter : comparable -> comparable -> List comparable -> List comparable
+insertAfter ref item list = case list of
+    []      -> [item]
+    x :: xs -> case x == ref of
+        True  -> x :: item :: xs
+        False -> x :: (insertAfter ref item xs)
+
+fetch : comparable -> Dict comparable v -> v
+fetch k d =
+    case Dict.get k d of
+        Just v ->
+            v
+
+            -- here be dragons
+        -- Nothing -> makeUndefined k
+        Nothing -> Debug.todo "item not in dict"
