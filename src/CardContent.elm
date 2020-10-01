@@ -6,6 +6,7 @@ import Html.Events as HE
 
 import Markdown.Parser as Markdown
 import Markdown.Renderer
+import Markdown.Html
 
 type alias CardContent =
     { text: String
@@ -20,7 +21,7 @@ render content = div
     [ case content.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
-            |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
+            |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
         of
             Ok rendered ->
                 div [ class "markdown" ] rendered
@@ -33,3 +34,15 @@ deadEndsToString deadEnds =
     deadEnds
         |> List.map Markdown.deadEndToString
         |> String.join "\n"
+
+renderer : Markdown.Renderer.Renderer (Html Msg)
+renderer = let default = Markdown.Renderer.defaultHtmlRenderer in
+    { default
+    | html = Markdown.Html.oneOf
+        [ Markdown.Html.tag "maths" renderMaths
+        , Markdown.Html.tag "math"  renderMaths
+        ]
+    }
+
+renderMaths : List (Html Msg) -> Html Msg
+renderMaths children = div [ class "maths" ] children
