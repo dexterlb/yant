@@ -7,6 +7,7 @@ require('./styles/main.scss');
 let elm = require('./Main.elm')
 
 require('./maths.ts')
+require('./fonts.ts')
 
 type ElmApp = any   // he he
 

@@ -5,6 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "mathjax": "^3.1.2",
+    "typeface-droid-sans": "0.0.44",
+    "typeface-droid-sans-mono": "0.0.44",
     "url-loader": "^4.1.0"
   },
   "devDependencies": {

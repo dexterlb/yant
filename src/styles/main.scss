@@ -1,5 +1,15 @@
 @import 'sr_only';
 
+body {
+    font-family: 'Droid Sans', sans-serif;
+    font-size: 11pt;
+}
+
+pre, code {
+    font-family: 'Droid Sans Mono', monospace;
+    font-size: 11pt;
+}
+
 .card {
     .card-body {
         display: flex;
@@ -18,7 +28,7 @@
 
             button {
                 background-color: rgba(100, 100, 100, 0.1);
-                width: 1em;
+                width: 1.2em;
                 padding: 0px;
 
                 height: 100%;
@@ -28,6 +38,10 @@
                 &.expander {
                     &:hover {
                         background-color: rgba(100, 100, 100, 0.5);
+                    }
+
+                    .icon {
+                        font-size: 0.7em;
                     }
                 }
             }
