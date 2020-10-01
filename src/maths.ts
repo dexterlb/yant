@@ -1,8 +1,9 @@
 let typesetter = Promise.resolve();  // Used to hold chain of typesetting calls
-
 declare global {
     var MathJax: any
 }
+
+require('mathjax/es5/tex-svg.js');
 
 function typeset(code: () => Array<HTMLElement>) {
     typesetter = typesetter.then(() => {return MathJax.typesetPromise(code());})

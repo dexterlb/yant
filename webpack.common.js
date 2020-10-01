@@ -1,3 +1,4 @@
+const   webpack                       = require('webpack');
 const   fs                            = require('fs');
 const   path                          = require('path');
 const { CleanWebpackPlugin }          = require('clean-webpack-plugin');
@@ -44,6 +45,9 @@ module.exports = {
       verbose: true,
       protectWebpackAssets: false,
     }),
+    new webpack.ProvidePlugin({
+      MathJaxDummy: 'mathjax/es5/tex-chtml.js',
+    }),
   ],
 
   module: {
@@ -80,7 +84,7 @@ module.exports = {
       },
       {
         test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
-        loader: 'url-loader?limit=10000&mimetype=application/font-woff',
+        loader: 'url-loader?limit=100000&mimetype=application/font-woff',
       },
       {
         test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
