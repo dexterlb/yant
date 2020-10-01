@@ -58,31 +58,20 @@
 
             .card-content {
                 margin-left: 0.4em;
+                padding-top: 0.2em;
+                padding-bottom: 0.2em;
 
-                > div { // markdown container
+                > .markdown { // markdown container
+                    p, ul, pre {
+                        margin-top: 0.5em;
+                        margin-bottom: 0.5em;
 
-                    // remove top and bottom margins of markdown paragraphs
-                    > span:first-child {
-                        > *:first-child {
-                            margin-top: 0px;
-                            > *:first-child {
-                                margin-top: 0px;
-                            }
+                        &:first-child {
+                            margin-top: 0;
                         }
-                    }
-
-                    > span:last-child {
-                        > *:last-child {
-                            margin-bottom: 0px;
-                            > *:first-child {
-                                margin-top: 0px;
-                            }
+                        &:last-child {
+                            margin-bottom: 0;
                         }
-                    }
-
-                    p, h1, h2, h3, h4, h5, h6, li, ul {
-                        background-color: Transparent !important;
-                        list-style: none;
                     }
                 }
             }

@@ -5,8 +5,8 @@ import Html.Attributes exposing (class, value, placeholder, style, disabled)
 import Html.Events as HE
 import Color
 
-import Markdown.Option
-import Markdown.Render
+import Markdown.Parser as Markdown
+import Markdown.Renderer
 
 import Random
 import Random.String
@@ -69,7 +69,6 @@ type Msg
     | AddChildWithID  Insertion CardID
     | SaveEdit
     | CancelEdit
-    | MarkdownMsg     Markdown.Render.MarkdownMsg
 
 type InputMsg
     = GotCard Card
@@ -137,7 +136,6 @@ update msg model = let oldContext = model.context in case msg of
         let (model1, actions) = collapse path model
         in
             ( model1, Cmd.none, actions )
-    MarkdownMsg _ -> ( model, Cmd.none, [] )
 
 editMode : CardPath -> Model -> Model
 editMode path model = case Dict.get (NE.head path) model.cards of
@@ -238,9 +236,22 @@ viewSelectedCardBody ctx path card = div
 viewCardContent : Card -> Html Msg
 viewCardContent card = div
     [ class "card-content" ]
-    [ Markdown.Render.toHtml Markdown.Option.ExtendedMath (case card.text of
-        "" -> "<empty>"
-        text -> text ) |> Html.map MarkdownMsg ]
+    [ case card.text
+            |> Markdown.parse
+            |> Result.mapError deadEndsToString
+            |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
+        of
+            Ok rendered ->
+                div [ class "markdown" ] rendered
+
+            Err errors ->
+                text errors
+    ]
+
+deadEndsToString deadEnds =
+    deadEnds
+        |> List.map Markdown.deadEndToString
+        |> String.join "\n"
 
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
