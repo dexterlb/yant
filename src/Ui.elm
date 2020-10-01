@@ -107,7 +107,7 @@ update msg model = let oldContext = model.context in case msg of
         Just parent ->
             let model1 = { model | cards = delChildFromCard parent (NE.head path) model.cards }
             in
-                ( model1, Cmd.none, (saveCard (NE.head path) model1.cards) )
+                ( model1, Cmd.none, (saveCard parent model1.cards) )
     SaveEdit -> case model.context.state of
         Editing ectx -> let (cards, cmd, actions) = editCard ectx model.cards in
             ( { model | cards = cards, context = { oldContext | state = None } }, cmd, actions )

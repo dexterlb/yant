@@ -18,7 +18,7 @@ type Msg
 render : CardContent -> Html Msg
 render content = div
     [ class "card-content" ]
-    [ case content.text
+    ( [ case content.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
             |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
@@ -27,8 +27,9 @@ render content = div
                 div [ class "markdown" ] rendered
 
             Err errors ->
-                text errors
-    ]
+                div [ class "markdown-errors" ] [ text errors ]
+
+    ] |> detectMaths content.text )
 
 deadEndsToString deadEnds =
     deadEnds
@@ -39,10 +40,14 @@ renderer : Markdown.Renderer.Renderer (Html Msg)
 renderer = let default = Markdown.Renderer.defaultHtmlRenderer in
     { default
     | html = Markdown.Html.oneOf
-        [ Markdown.Html.tag "maths" renderMaths
-        , Markdown.Html.tag "math"  renderMaths
+        [
         ]
     }
 
+detectMaths : String -> List (Html Msg) -> List (Html Msg)
+detectMaths content tags = case content |> String.contains "$" of
+    True  -> [ renderMaths tags ]
+    False -> tags
+
 renderMaths : List (Html Msg) -> Html Msg
-renderMaths children = div [ class "maths" ] children
+renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children

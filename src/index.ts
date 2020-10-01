@@ -6,6 +6,8 @@ require('./styles/main.scss');
 
 let elm = require('./Main.elm')
 
+require('./maths.ts')
+
 type ElmApp = any   // he he
 
 interface Context {
