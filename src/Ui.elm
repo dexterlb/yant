@@ -5,9 +5,6 @@ import Html.Attributes exposing (class, value, placeholder, style, disabled)
 import Html.Events as HE
 import Color
 
-import Markdown.Parser as Markdown
-import Markdown.Renderer
-
 import Random
 import Random.String
 import Random.Char
@@ -20,6 +17,7 @@ import Json.Decode as JD
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
 import Utils
+import CardContent as CardContent exposing (CardContent)
 
 
 type alias Model =
@@ -35,7 +33,7 @@ type alias Context =
 
 type alias EditContext =
     { path: CardPath
-    , text: String
+    , content: CardContent
     }
 
 type InsertMode
@@ -69,6 +67,7 @@ type Msg
     | AddChildWithID  Insertion CardID
     | SaveEdit
     | CancelEdit
+    | ContentMsg      CardID CardContent.Msg
 
 type InputMsg
     = GotCard Card
@@ -98,7 +97,7 @@ init rootCard =
 
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = let oldContext = model.context in case msg of
-    TextChanged text -> ( updateEditContext (\ectx -> { ectx | text = text }) model, Cmd.none, [])
+    TextChanged text -> ( updateEditText text model, Cmd.none, [])
     SelectCard path  -> ( newState (Selected path) model, Cmd.none, [] )
     DeselectCard     -> ( newState None model, Cmd.none, [] )
     EditCard path    ->
@@ -137,10 +136,12 @@ update msg model = let oldContext = model.context in case msg of
         in
             ( model1, Cmd.none, actions )
 
+    ContentMsg _ CardContent.Foo -> (model, Cmd.none, [])
+
 editMode : CardPath -> Model -> Model
 editMode path model = case Dict.get (NE.head path) model.cards of
     Nothing -> model
-    Just card -> newState (Editing { path = path, text = card.text }) model
+    Just card -> newState (Editing { path = path, content = card.content }) model
 
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
 pushMsg inMsg model = case inMsg of
@@ -195,7 +196,7 @@ viewEditingCardBody ctx path card ectx = div
     [ viewCardControls ctx path card
     , div [ class "card-vbox" ]
         [ textarea
-            [ value ectx.text
+            [ value ectx.content.text
             , placeholder "enter some note text"
             , HE.onInput TextChanged
             ] []
@@ -234,24 +235,9 @@ viewSelectedCardBody ctx path card = div
     ]
 
 viewCardContent : Card -> Html Msg
-viewCardContent card = div
-    [ class "card-content" ]
-    [ case card.text
-            |> Markdown.parse
-            |> Result.mapError deadEndsToString
-            |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
-        of
-            Ok rendered ->
-                div [ class "markdown" ] rendered
-
-            Err errors ->
-                text errors
-    ]
-
-deadEndsToString deadEnds =
-    deadEnds
-        |> List.map Markdown.deadEndToString
-        |> String.join "\n"
+viewCardContent card
+    =  CardContent.render card.content
+    |> Html.map (ContentMsg card.id)
 
 
 viewCardButtonBar : CardPath -> Card -> Html Msg
@@ -343,14 +329,17 @@ collapse path model =
             { oldContext | expanded = PT.drop path oldContext.expanded } }
     in syncCards model1
 
-setCardText : Cards -> CardID -> String -> Cards
-setCardText cards id text = Cards.update id (\card -> { card | text = text }) cards
-
 -- todo: rewrite this to use updateState
 updateEditContext : (EditContext -> EditContext) -> Model -> Model
 updateEditContext f model = let oldContext = model.context in case model.context.state of
     Editing ectx -> { model | context = { oldContext | state = Editing (f ectx) } }
     _            -> model
+
+updateEditText : String -> Model -> Model
+updateEditText text = updateEditContext
+    (\ctx -> let content = ctx.content in
+        { ctx | content = { content | text = text } }
+    )
 
 newState : UserState -> Model -> Model
 newState state = updateState (\_ -> state)
@@ -363,7 +352,7 @@ updateState f model = let oldContext = model.context in
 editCard : EditContext -> Cards -> (Cards, Cmd Msg, Actions)
 editCard ectx cards = case Dict.get (NE.head ectx.path) cards of
     Nothing -> (cards, Cmd.none, [])
-    Just oldCard -> let card = { oldCard | text = ectx.text } in
+    Just oldCard -> let card = { oldCard | content = ectx.content } in
         (Cards.add card cards, Cmd.none, [SaveCard card])
 
 saveCard : CardID -> Cards -> Actions

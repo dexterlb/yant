@@ -8,11 +8,13 @@ import Dict as Dict exposing (Dict)
 import Json.Encode as JE
 import Json.Decode as JD
 
+import CardContent as CardContent exposing (CardContent)
+
 type alias CardID = String
 
 type alias Card =
     { id:       CardID
-    , text:     String
+    , content:  CardContent
     , children: List CardID
     }
 
@@ -36,13 +38,13 @@ decodeCardID = JD.string
 decodeCard : JD.Decoder Card
 decodeCard = JD.map3 Card
     (JD.field "id" decodeCardID)
-    (JD.field "text" JD.string)
+    (JD.field "text" (JD.string |> JD.map (\text -> { text = text })))
     (JD.field "children" <| JD.list decodeCardID)
 
 encodeCard : Card -> JE.Value
 encodeCard card = JE.object
     [ ("id",       encodeCardID card.id)
-    , ("text",     JE.string card.text)
+    , ("text",     JE.string card.content.text)
     , ("children", JE.list encodeCardID card.children)
     ]
 type alias CardPath = Nonempty CardID
