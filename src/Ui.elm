@@ -40,6 +40,7 @@ type alias Clipboard = (CardPath, ClipboardState)
 
 type ClipboardState
     = Move
+    | Link
 
 type InsertMode
     = FirstChild
@@ -142,6 +143,9 @@ update msg model = let oldContext = model.context in case msg of
         in let
             (model2, cmd2, actions2) = update (AddChildWithID ins (NE.head oldPath)) model1
         in  (model2, Cmd.batch [cmd1, cmd2], actions1 ++ actions2)
+
+    PasteChild ins (oldPath, Link) ->
+        update (AddChildWithID ins (NE.head oldPath)) model
 
     Expand path ->
         let (model1, actions) = expand path model
@@ -304,6 +308,9 @@ viewCardToolbar path card = div [ class "button-bar" ] (
     , button
         [ onClick (SetClipboard (Just (path, Move))) ]
         [ text "move" ]
+    , button
+        [ onClick (SetClipboard (Just (path, Link))) ]
+        [ text "link" ]
     , button
         [ onClick (AddChild (FirstChild, path)) ]
         [ text "add child" ]
