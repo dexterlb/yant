@@ -36,6 +36,11 @@ type alias EditContext =
     , content: CardContent
     }
 
+type alias Clipboard = (CardPath, ClipboardState)
+
+type ClipboardState
+    = Move
+
 type InsertMode
     = FirstChild
     | LastChild
@@ -45,8 +50,8 @@ type InsertMode
 type alias Insertion = (InsertMode, CardPath)
 
 type UserState
-    = None
-    | Selected CardPath
+    = None (Maybe Clipboard)
+    | Selected CardPath (Maybe Clipboard)
     | Editing EditContext
     | PendingEdit CardPath
 
@@ -68,6 +73,9 @@ type Msg
     | SaveEdit
     | CancelEdit
     | ContentMsg      CardID CardContent.Msg
+    | NotImplemented
+    | SetClipboard    (Maybe Clipboard)
+    | PasteChild      Insertion Clipboard
 
 type InputMsg
     = GotCard Card
@@ -86,7 +94,7 @@ init rootCard =
             { cards = noCards
             , rootCard = rootCard
             , context =
-                { state = None
+                { state = None Nothing
                 , expanded = PT.empty
                 }
             }
@@ -98,8 +106,8 @@ init rootCard =
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = let oldContext = model.context in case msg of
     TextChanged text -> ( updateEditText text model, Cmd.none, [])
-    SelectCard path  -> ( newState (Selected path) model, Cmd.none, [] )
-    DeselectCard     -> ( newState None model, Cmd.none, [] )
+    SelectCard path  -> ( newState (Selected path (clipboardOf model.context.state)) model, Cmd.none, [] )
+    DeselectCard     -> ( newState (None (clipboardOf model.context.state)) model, Cmd.none, [] )
     EditCard path    ->
         ( editMode path model, Cmd.none, [])
     UnlinkCard path -> case NE.tail path |> List.head of
@@ -110,11 +118,11 @@ update msg model = let oldContext = model.context in case msg of
                 ( model1, Cmd.none, (saveCard parent model1.cards) )
     SaveEdit -> case model.context.state of
         Editing ectx -> let (cards, cmd, actions) = editCard ectx model.cards in
-            ( { model | cards = cards, context = { oldContext | state = None } }, cmd, actions )
+            ( { model | cards = cards, context = { oldContext | state = None Nothing } }, cmd, actions )
         _ -> (model, Cmd.none, [])
     CancelEdit -> case model.context.state of
         Editing ectx ->
-            ( { model | context = { oldContext | state = None } }, Cmd.none, [] )
+            ( { model | context = { oldContext | state = None Nothing } }, Cmd.none, [] )
         _ -> (model, Cmd.none, [])
     AddChild ins -> ( model, randomID (AddChildWithID ins), [])
     AddChildWithID ins id ->
@@ -127,6 +135,14 @@ update msg model = let oldContext = model.context in case msg of
             (model3, actions2) = ( model2, (saveCard (NE.head parentPath) model2.cards) ++ actions1 )
         in
             ( newState (PendingEdit newPath) model3, Cmd.none, actions2 )
+
+    PasteChild ins (oldPath, Move) ->
+        let
+            (model1, cmd1, actions1) = update (UnlinkCard oldPath) model
+        in let
+            (model2, cmd2, actions2) = update (AddChildWithID ins (NE.head oldPath)) model1
+        in  (model2, Cmd.batch [cmd1, cmd2], actions1 ++ actions2)
+
     Expand path ->
         let (model1, actions) = expand path model
         in
@@ -136,7 +152,17 @@ update msg model = let oldContext = model.context in case msg of
         in
             ( model1, Cmd.none, actions )
 
+    SetClipboard clip ->
+        let model1 = case model.context.state of
+                        Selected path _ -> newState (Selected path clip) model
+                        None _          -> newState (None clip) model
+                        _               -> model
+        in
+            ( model1, Cmd.none, [] )
+
     ContentMsg _ CardContent.Foo -> (model, Cmd.none, [])
+
+    NotImplemented -> Debug.todo "not implemented"
 
 editMode : CardPath -> Model -> Model
 editMode path model = case Dict.get (NE.head path) model.cards of
@@ -179,13 +205,13 @@ viewCardChildren ctx path cards childIDs =
 viewCardBody : Context -> CardPath -> Card -> Html Msg
 viewCardBody ctx path card =
     case ctx.state of
-        None -> viewPlainCardBody ctx path card
+        None _ -> viewPlainCardBody ctx path card
         PendingEdit _ -> viewPlainCardBody ctx path card
         Editing ectx -> case ectx.path == path of
             True -> viewEditingCardBody ctx path card ectx
             False -> viewPlainCardBody ctx path card
-        Selected spath -> case spath == path of
-            True -> viewSelectedCardBody ctx path card
+        Selected spath clip -> case spath == path of
+            True -> viewSelectedCardBody ctx path card clip
             False -> viewPlainCardBody ctx path card
 
 
@@ -223,13 +249,13 @@ viewPlainCardBody ctx path card = div
         ]
     ]
 
-viewSelectedCardBody : Context -> CardPath -> Card -> Html Msg
-viewSelectedCardBody ctx path card = div
+viewSelectedCardBody : Context -> CardPath -> Card -> Maybe Clipboard -> Html Msg
+viewSelectedCardBody ctx path card clip = div
     [ class "card-body", class "selected", cardColour path CardSelected ]
 
     [ viewCardControls ctx path card
     , div [ class "card-vbox" ]
-        [ viewCardButtonBar path card
+        [ viewCardButtonBar path card clip
         , viewCardContent card
         ]
     ]
@@ -240,14 +266,44 @@ viewCardContent card
     |> Html.map (ContentMsg card.id)
 
 
-viewCardButtonBar : CardPath -> Card -> Html Msg
-viewCardButtonBar path card = div [ class "button-bar" ] (
+viewCardButtonBar : CardPath -> Card -> Maybe Clipboard -> Html Msg
+viewCardButtonBar path card clip = case clip of
+    Nothing    -> viewCardToolbar path card
+    Just clips -> viewCardPasteBar path card clips
+
+viewCardPasteBar : CardPath -> Card -> (CardPath, ClipboardState) -> Html Msg
+viewCardPasteBar path card clip = div [ class "button-bar" ] (
+    [ button
+        [ onClick DeselectCard ]
+        [ text "deselect" ]
+    , button
+        [ onClick (SetClipboard Nothing) ]
+        [ text "cancel" ]
+    , button
+        [ onClick (PasteChild (FirstChild, path) clip) ]
+        [ text "paste as child" ]
+    ] ++ case NE.tail path |> List.isEmpty of
+        True  -> []
+        False ->
+            [ button
+                [ onClick (PasteChild (Before, path) clip) ]
+                [ text "paste before" ]
+            , button
+                [ onClick (PasteChild (After, path) clip) ]
+                [ text "paste after" ]
+            ])
+
+viewCardToolbar : CardPath -> Card -> Html Msg
+viewCardToolbar path card = div [ class "button-bar" ] (
     [ button
         [ onClick DeselectCard ]
         [ text "deselect" ]
     , button
         [ onClick (EditCard path) ]
         [ text "edit" ]
+    , button
+        [ onClick (SetClipboard (Just (path, Move))) ]
+        [ text "move" ]
     , button
         [ onClick (AddChild (FirstChild, path)) ]
         [ text "add child" ]
@@ -301,11 +357,26 @@ viewChildlessCardControls ctx path = div [ class "controls" ]
         ]
     ]
 
+viewMainMenu : Context -> Html Msg
+viewMainMenu ctx = div [ class "main-menu" ]
+    [ div [ class "button-bar" ]
+        [ button
+            [ onClick NotImplemented ]
+            [ text "export data" ]
+        , button
+            [ onClick NotImplemented ]
+            [ text "import data" ]
+        ]
+    ]
+
 
 view : Model -> Html Msg
 view { context, cards, rootCard } =
     div []
-        [ viewCard context (NE.fromElement rootCard) cards
+        [ viewMainMenu context
+        , div [ class "cards" ]
+            [ viewCard context (NE.fromElement rootCard) cards
+            ]
         ]
 
 -- Helpers
@@ -435,6 +506,12 @@ getParentPath : CardPath -> CardPath
 getParentPath path = case NE.tail path |> NE.fromList of
     Just l  -> l
     Nothing -> Debug.todo "looking for parent of root"
+
+clipboardOf : UserState -> Maybe Clipboard
+clipboardOf state = case state of
+    None clip       -> clip
+    Selected _ clip -> clip
+    _               -> Nothing
 
 -- Utils
 

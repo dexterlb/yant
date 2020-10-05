@@ -10,6 +10,32 @@ pre, code {
     font-size: 11pt;
 }
 
+.main-menu {
+    background-color: #dbc6a4;
+    margin-bottom: 1em;
+    padding: 0.2em;
+}
+
+.button-bar {
+    width: 100%;
+
+    display: flex;
+    flex-direction: row;
+
+    button {
+        background-color: rgba(100, 100, 100, 0.3);
+        margin: 0.2em;
+
+        border: none;
+        outline: none;
+
+        &:hover {
+            background-color: rgba(100, 100, 100, 0.5);
+        }
+    }
+}
+
+
 .card {
     .card-body {
         display: flex;
@@ -54,20 +80,6 @@ pre, code {
 
             .button-bar {
                 background-color: rgba(100, 100, 100, 0.1);
-                width: 100%;
-
-                button {
-                    background-color: rgba(100, 100, 100, 0.3);
-                    // padding: 0.4em;
-                    margin: 0.2em;
-
-                    border: none;
-                    outline: none;
-
-                    &:hover {
-                        background-color: rgba(100, 100, 100, 0.5);
-                    }
-                }
             }
 
             .card-content {
