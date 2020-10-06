@@ -38,13 +38,14 @@ decodeCardID = JD.string
 decodeCard : JD.Decoder Card
 decodeCard = JD.map3 Card
     (JD.field "id" decodeCardID)
-    (JD.field "text" (JD.string |> JD.map (\text -> { text = text })))
+    (JD.field "content" CardContent.decode)
     (JD.field "children" <| JD.list decodeCardID)
 
 encodeCard : Card -> JE.Value
 encodeCard card = JE.object
     [ ("id",       encodeCardID card.id)
-    , ("text",     JE.string card.content.text)
+    , ("content",  CardContent.encode card.content)
     , ("children", JE.list encodeCardID card.children)
     ]
+
 type alias CardPath = Nonempty CardID

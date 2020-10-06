@@ -1,4 +1,4 @@
-module CardContent exposing (render, CardContent, Msg(..))
+module CardContent exposing (render, CardContent, Msg(..), encode, decode, update)
 
 import Html exposing (Html, div, text, button, textarea)
 import Html.Attributes exposing (class, value, placeholder, style, disabled)
@@ -8,12 +8,16 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Markdown.Html
 
+import Json.Encode as JE
+import Json.Decode as JD
+
 type alias CardContent =
     { text: String
+    , done: Bool
     }
 
 type Msg
-    = Foo
+    = SetDone Bool
 
 render : CardContent -> Html Msg
 render content = div
@@ -30,6 +34,10 @@ render content = div
                 div [ class "markdown-errors" ] [ text errors ]
 
     ] |> detectMaths content.text )
+
+update : Msg -> CardContent -> (CardContent, Bool)
+update msg content = case msg of
+    SetDone done -> ({ content | done = done }, True)
 
 deadEndsToString deadEnds =
     deadEnds
@@ -51,3 +59,14 @@ detectMaths content tags = case content |> String.contains "$" of
 
 renderMaths : List (Html Msg) -> Html Msg
 renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children
+
+decode : JD.Decoder CardContent
+decode = JD.map2 CardContent
+    (JD.field "text" JD.string)
+    (JD.field "done" JD.bool)
+
+encode : CardContent -> JD.Value
+encode content = JE.object
+    [ ("text",     JE.string content.text)
+    , ("done",     JE.bool   content.done)
+    ]

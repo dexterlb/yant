@@ -29,7 +29,10 @@ async function process_get_card(ctx: Context, cardID: string): Promise<void> {
         console.log("returning empty card at ", cardID)
         ctx.app.ports.gotCard.send({
             id: cardID,
-            text: "",
+            content: {
+                text: "",
+                done: false,
+            },
             children: [],
         })
     } else {

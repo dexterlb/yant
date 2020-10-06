@@ -1,7 +1,7 @@
 module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
 
-import Html exposing (Html, div, text, button, textarea)
-import Html.Attributes exposing (class, value, placeholder, style, disabled)
+import Html exposing (Html, div, text, button, textarea, input)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked)
 import Html.Events as HE
 import Color
 
@@ -174,7 +174,18 @@ update msg model = let oldContext = model.context in case msg of
         in
             ( model1, Cmd.none, [] )
 
-    ContentMsg _ CardContent.Foo -> (model, Cmd.none, [])
+    ContentMsg id contentMsg ->
+        let
+            card = fetch id model.cards
+        in let
+            (newContent, changed) = CardContent.update contentMsg card.content
+        in let
+            newCard = { card | content = newContent }
+        in let
+            model1 = { model | cards = Cards.add newCard model.cards }
+        in case changed of
+            True  -> (model1, Cmd.none, saveCard id model1.cards)
+            False -> (model1, Cmd.none, [])
 
     NotImplementedMsg ->
        ( setError NotImplemented model, Cmd.none, [] )
@@ -331,7 +342,7 @@ viewCardToolbar path card = div [ class "button-bar" ] (
     , button
         [ onClick (AddChild (FirstChild, path)) ]
         [ text "add child" ]
-    ] ++ case NE.tail path |> List.isEmpty of
+    ] ++ (case NE.tail path |> List.isEmpty of
         True  -> []
         False ->
             [ button
@@ -343,7 +354,15 @@ viewCardToolbar path card = div [ class "button-bar" ] (
             , button
                 [ onClick (AddChild (After, path)) ]
                 [ text "add after" ]
-            ])
+            ]) ++
+    [ case card.content.done of
+        True -> button
+            [ onClick (ContentMsg (NE.head path) <| CardContent.SetDone False)]
+            [ text "mark not done" ]
+        False -> button
+            [ onClick (ContentMsg (NE.head path) <| CardContent.SetDone True)]
+            [ text "mark done" ]
+    ])
 
 viewCardControls : Context -> CardPath -> Card -> Html Msg
 viewCardControls ctx path card =
