@@ -24,6 +24,7 @@ type alias Model =
     { cards: Cards
     , rootCard: CardID
     , context: Context
+    , error: Maybe ErrorMessage
     }
 
 type alias Context =
@@ -38,9 +39,13 @@ type alias EditContext =
 
 type alias Clipboard = (CardPath, ClipboardState)
 
+type ErrorMessage
+    = NotImplemented
+
 type ClipboardState
     = Move
     | Link
+    | Copy
 
 type InsertMode
     = FirstChild
@@ -74,9 +79,10 @@ type Msg
     | SaveEdit
     | CancelEdit
     | ContentMsg      CardID CardContent.Msg
-    | NotImplemented
+    | NotImplementedMsg
     | SetClipboard    (Maybe Clipboard)
     | PasteChild      Insertion Clipboard
+    | ClearError
 
 type InputMsg
     = GotCard Card
@@ -98,6 +104,7 @@ init rootCard =
                 { state = None Nothing
                 , expanded = PT.empty
                 }
+            , error = Nothing
             }
     in let
         (model1, actions) = syncCards model
@@ -144,6 +151,9 @@ update msg model = let oldContext = model.context in case msg of
             (model2, cmd2, actions2) = update (AddChildWithID ins (NE.head oldPath)) model1
         in  (model2, Cmd.batch [cmd1, cmd2], actions1 ++ actions2)
 
+    PasteChild ins (oldPath, Copy) ->
+       ( setError NotImplemented model, Cmd.none, [] )
+
     PasteChild ins (oldPath, Link) ->
         update (AddChildWithID ins (NE.head oldPath)) model
 
@@ -166,7 +176,11 @@ update msg model = let oldContext = model.context in case msg of
 
     ContentMsg _ CardContent.Foo -> (model, Cmd.none, [])
 
-    NotImplemented -> Debug.todo "not implemented"
+    NotImplementedMsg ->
+       ( setError NotImplemented model, Cmd.none, [] )
+
+    ClearError ->
+       ( clearError model, Cmd.none, [] )
 
 editMode : CardPath -> Model -> Model
 editMode path model = case Dict.get (NE.head path) model.cards of
@@ -309,6 +323,9 @@ viewCardToolbar path card = div [ class "button-bar" ] (
         [ onClick (SetClipboard (Just (path, Move))) ]
         [ text "move" ]
     , button
+        [ onClick (SetClipboard (Just (path, Copy))) ]
+        [ text "copy" ]
+    , button
         [ onClick (SetClipboard (Just (path, Link))) ]
         [ text "link" ]
     , button
@@ -368,23 +385,32 @@ viewMainMenu : Context -> Html Msg
 viewMainMenu ctx = div [ class "main-menu" ]
     [ div [ class "button-bar" ]
         [ button
-            [ onClick NotImplemented ]
+            [ onClick NotImplementedMsg ]
             [ text "export data" ]
         , button
-            [ onClick NotImplemented ]
+            [ onClick NotImplementedMsg ]
             [ text "import data" ]
         ]
     ]
 
+viewError : Maybe ErrorMessage -> List (Html Msg)
+viewError error = case error of
+    Nothing -> []
+    Just err -> [div
+        [ class "error-box", onClick ClearError ]
+        ( case err of
+            NotImplemented -> [text "not implemented"]
+        )]
 
 view : Model -> Html Msg
-view { context, cards, rootCard } =
+view { context, cards, rootCard, error } =
     div []
+        ( (viewError error) ++
         [ viewMainMenu context
         , div [ class "cards" ]
             [ viewCard context (NE.fromElement rootCard) cards
             ]
-        ]
+        ])
 
 -- Helpers
 
@@ -519,6 +545,12 @@ clipboardOf state = case state of
     None clip       -> clip
     Selected _ clip -> clip
     _               -> Nothing
+
+setError : ErrorMessage -> Model -> Model
+setError err model = { model | error = Just err }
+
+clearError : Model -> Model
+clearError model = { model | error = Nothing }
 
 -- Utils
 
