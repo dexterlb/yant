@@ -45,9 +45,6 @@ module.exports = {
       verbose: true,
       protectWebpackAssets: false,
     }),
-    new webpack.ProvidePlugin({
-      MathJaxDummy: 'mathjax/es5/tex-chtml.js',
-    }),
   ],
 
   module: {

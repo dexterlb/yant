@@ -53,9 +53,12 @@ renderer = let default = Markdown.Renderer.defaultHtmlRenderer in
     }
 
 detectMaths : String -> List (Html Msg) -> List (Html Msg)
-detectMaths content tags = case content |> String.contains "$" of
+detectMaths content tags = case hasMaths content of
     True  -> [ renderMaths tags ]
     False -> tags
+
+hasMaths : String -> Bool
+hasMaths s = (String.contains "$" s) || (String.contains "\\(" s) || (String.contains "\\[" s)
 
 renderMaths : List (Html Msg) -> Html Msg
 renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children

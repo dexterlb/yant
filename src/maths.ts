@@ -1,15 +1,15 @@
-let typesetter = Promise.resolve();  // Used to hold chain of typesetting calls
-declare global {
-    var MathJax: any
-}
+import renderMathInElement from 'katex/dist/contrib/auto-render'
 
-require('mathjax/es5/tex-svg.js');
+require('katex/dist/katex.css')
 
-function typeset(code: () => Array<HTMLElement>) {
-    typesetter = typesetter.then(() => {return MathJax.typesetPromise(code());})
-        .catch((err) => console.log('Typeset failed: ' + err.message));
-    return typesetter;
-}
+const mathsOptions = {
+    delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\(", right: "\)", display: false},
+        {left: "\[", right: "\]", display: true},
+    ]
+};
 
 export class MathsContainer extends HTMLElement {
     constructor() {
@@ -17,7 +17,7 @@ export class MathsContainer extends HTMLElement {
     }
 
     connectedCallback() {
-        typeset(() => [this]);
+        renderMathInElement(this, mathsOptions);
     }
 }
 

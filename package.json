@@ -4,7 +4,8 @@
   "description": "Hierarchial note taking",
   "main": "index.js",
   "dependencies": {
-    "mathjax": "^3.1.2",
+    "@types/katex": "^0.11.0",
+    "katex": "^0.12.0",
     "typeface-droid-sans": "0.0.44",
     "typeface-droid-sans-mono": "0.0.44",
     "url-loader": "^4.1.0"
