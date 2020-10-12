@@ -11,6 +11,8 @@ import Markdown.Html
 import Json.Encode as JE
 import Json.Decode as JD
 
+import Events
+
 type alias CardContent =
     { text: String
     , done: Bool
