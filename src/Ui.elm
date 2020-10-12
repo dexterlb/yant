@@ -41,6 +41,7 @@ type alias Clipboard = (CardPath, ClipboardState)
 
 type ErrorMessage
     = NotImplemented
+    | UnlinkWithoutParent
 
 type ClipboardState
     = Move
@@ -119,7 +120,8 @@ update msg model = let oldContext = model.context in case msg of
     EditCard path    ->
         ( editMode path model, Cmd.none, [])
     UnlinkCard path -> case NE.tail path |> List.head of
-        Nothing -> Debug.todo "unlinking card without parent"
+        Nothing ->
+            ( setError UnlinkWithoutParent model, Cmd.none, [] )
         Just parent ->
             let model1 = { model | cards = delChildFromCard parent (NE.head path) model.cards }
             in
@@ -419,6 +421,7 @@ viewError error = case error of
         [ class "error-box", onClick ClearError ]
         ( case err of
             NotImplemented -> [text "not implemented"]
+            UnlinkWithoutParent -> [ text "trying to unlink item without parent" ]
         )]
 
 view : Model -> Html Msg
