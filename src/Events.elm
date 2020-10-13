@@ -1,7 +1,11 @@
 module Events exposing (..)
 
 import Time
+import Time.Extra
 import Timezones exposing (Timezone)
+
+import Json.Encode as JE
+import Json.Decode as JD
 
 type alias Event =
     { data        : EventData
@@ -102,3 +106,36 @@ type WeekStart
 
 type alias Duration = Int   -- number of seconds
 type alias SignedDuration = Int
+
+
+-- JSON stuff starts here
+
+encodeEventData : EventData -> JE.Value
+encodeEventData data = JE.object <| catMaybes
+    [ Just ( "start", encodeDateTime data.start )
+    , Maybe.map ( \end -> ( "end", encodeDateTime end ) data.end )
+    , Just ( "allDay", JE.bool data.allDay )
+    , Maybe.map ( \repeat -> ( "repeating", encodeRepeat repeat) ) data.repeat
+    , Just ( "busy", JE.bool data.busy )
+    , Just ( "isTask", JE.bool data.task )
+    , Just ( "reminders", JE.list encodeReminder data.reminders )
+    ]
+
+encodeDateTime : DateTime -> JE.Value
+encodeDateTime dt
+    = let fakePosixTime = Time.Extra.fromDateTuple Time.utc (dt.year, dt.month, dt.day)
+                    |> Time.Extra.addHours dt.hour
+                    |> Time.Extra.addMinutes dt.minute
+                    |> Time.Extra.addSeconds dt.second
+    in
+        JE.object
+            [ ( "date_time", JE.string (Time.Extra.toIso8601DateTimeUTC fakePosixTime) )
+            , ( "timezone",  JE.string dt.timezone )
+            ]
+
+-- utils
+catMaybes : List (Maybe a) -> List a
+catMaybes l = case l of
+    []               -> []
+    ((Just x) :: xs) -> x :: (catMaybes xs)
+    (Nothing  :: xs) ->       catMaybes xs
