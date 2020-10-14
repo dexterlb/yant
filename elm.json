@@ -32,7 +32,9 @@
         }
     },
     "test-dependencies": {
-        "direct": {},
+        "direct": {
+            "elm-explorations/test": "1.2.2"
+        },
         "indirect": {
             "Garados007/elm-svg-parser": "1.0.0",
             "Janiczek/elm-bidict": "2.0.1",
