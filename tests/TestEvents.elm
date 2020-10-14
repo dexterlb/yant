@@ -1,10 +1,17 @@
 module TestEvents exposing (..)
 
+import Events exposing (..)
+
 import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, int, list, string)
+import Fuzz exposing (Fuzzer)
+import Fuzz.Json
 import Test exposing (..)
+import Json.Decode as JD
+import Json.Encode as JE
 
+fuzzEventData : Fuzzer EventData
 
-suite : Test
-suite =
-    todo "Implement our first test. See https://package.elm-lang.org/packages/elm-explorations/test/latest for how to do this!"
+jsonTests : Test
+jsonTests =
+    describe "json encoding and decoding"
+        [ Fuzz.Json.roundtrip "EventData encode/decode" fuzzEventData encodeEventData decodeEventData ]

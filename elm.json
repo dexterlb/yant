@@ -6,6 +6,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "NoRedInk/elm-json-decode-pipeline": "1.0.0",
             "avh4/elm-color": "1.0.0",
             "dillonkearns/elm-markdown": "5.0.0",
             "elm/browser": "1.0.2",
@@ -33,6 +34,7 @@
     },
     "test-dependencies": {
         "direct": {
+            "drathier/elm-test-tables": "3.0.0",
             "elm-explorations/test": "1.2.2"
         },
         "indirect": {
