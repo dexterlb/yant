@@ -123,7 +123,7 @@ encodeEventData data = JE.object <| catMaybes
 decodeEventData : Decoder EventData
 decodeEventData = JD.succeed EventData
     |> JDP.required   "start"  decodeDateTime
-    |> decodeOptional "end"    decodeDateTime 
+    |> decodeOptional "end"    decodeDateTime
     |> JDP.optional   "allDay" JD.bool False
     |> decodeOptional "repeating" decodeRepeat
     |> JDP.optional   "busy"   JD.bool False
@@ -151,6 +151,24 @@ encodeRepeat rep = JE.object <| catMaybes
     , Just ( "wkst", encodeWeekStart rep.wkst )
     ]
 
+decodeRepeat : Decoder Repeat
+decodeRepeat = JD.map4 Repeat
+    ( JD.field "freq" decodeFreq)
+    ( JD.oneOf [ ( JD.field "interval" JD.int ), JD.succeed 1 ] )
+    decodeFilterSet
+    ( JD.oneOf [ ( JD.field "wkst" decodeWeekStart ), JD.succeed Monday ] )
+
+decodeFilterSet : Decoder FilterSet
+decodeFilterSet = JD.succeed FilterSet
+    |> decodeOptionalList "byDay" decodeWeekday
+    |> decodeOptionalList "byMonthDay" JD.int
+    |> decodeOptionalList "byMonth" decodeMonth
+    |> decodeOptionalList "exclude" decodeDateTime
+    |> decodeOptional     "until" decodeDateTime
+    |> decodeOptional     "count" JD.int
+    |> decodeOptionalList "bySetPos" JD.int
+
+
 encodeReminder : Reminder -> JE.Value
 encodeReminder rem = JE.object <| catMaybes
     [ Just ( "type", encodeNoisiness rem.noisiness )
@@ -163,6 +181,18 @@ encodeReminder rem = JE.object <| catMaybes
         RepeatAt _ int -> Just ( "interval", JE.int int )
     ]
 
+decodeReminder : Decoder Reminder
+decodeReminder = JD.map3 Reminder
+    ( JD.field "type" decodeNoisiness )
+    ( JD.field "trigger" JD.int )
+    ( JD.oneOf [ decodeReminderRepeat, JD.succeed NoRepeat ] )
+
+decodeReminderRepeat : Decoder ReminderRepeat
+decodeReminderRepeat =
+    JD.map2 RepeatAt
+        ( JD.field "repeat"   JD.int )
+        ( JD.field "interval" JD.int )
+
 encodeDateTime : DateTime -> JE.Value
 encodeDateTime dt
     = let (dts, tz) = dateTimeToStrings dt
@@ -174,14 +204,14 @@ encodeDateTime dt
 
 decodeDateTime : Decoder DateTime
 decodeDateTime = JD.map2 dateTimeFromStrings
-    (JD.field "date_time")
-    (JD.field "timezone")
+    (JD.field "date_time" JD.string)
+    (JD.field "timezone"  JD.string)
     |> decodeOrFail "unable to decode date-time"
 
 dateTimeFromStrings : String -> Timezone -> Maybe DateTime
 dateTimeFromStrings dt tz
     = Time.Extra.fromIso8601Date Time.utc dt
-    |> Maybe.andThen (\t ->
+    |> Maybe.map (\t ->
         { year =    Time.toYear   Time.utc t
         , month =   Time.toMonth  Time.utc t
         , day =     Time.toDay    Time.utc t
@@ -202,17 +232,42 @@ dateTimeToStrings dt
 encodeFreq : Freq -> JE.Value
 encodeFreq freq = JE.string (freqToString freq)
 
+decodeFreq : Decoder Freq
+decodeFreq = JD.string
+    |> JD.map freqFromString
+    |> decodeOrFail "not a valid Freq"
+
 encodeWeekday : Weekday -> JE.Value
 encodeWeekday freq = JE.string (weekdayToString freq)
+
+decodeWeekday : Decoder Weekday
+decodeWeekday = JD.string
+    |> JD.map weekdayFromString
+    |> decodeOrFail "not a valid weekday"
 
 encodeWeekStart : WeekStart -> JE.Value
 encodeWeekStart freq = JE.string (weekStartToString freq)
 
+decodeWeekStart : Decoder WeekStart
+decodeWeekStart = JD.string
+    |> JD.map weekStartFromString
+    |> decodeOrFail "not a valid week start"
+
 encodeMonth : Month -> JE.Value
 encodeMonth month = JE.int (monthToInt month)
 
+decodeMonth : Decoder Month
+decodeMonth = JD.int
+    |> JD.map monthFromInt
+    |> decodeOrFail "not a valid month"
+
 encodeNoisiness : Noisiness -> JE.Value
 encodeNoisiness n = JE.string (noisinessToString n)
+
+decodeNoisiness : Decoder Noisiness
+decodeNoisiness = JD.string
+    |> JD.map noisinessFromString
+    |> decodeOrFail "not a valid noisiness"
 
 freqToString : Freq -> String
 freqToString freq = case freq of
@@ -222,6 +277,16 @@ freqToString freq = case freq of
     Weekly   -> "WEEKLY"
     Monthly  -> "MONTHLY"
     Yearly   -> "YEARLY"
+
+freqFromString : String -> Maybe Freq
+freqFromString s = case s of
+    "SECONDLY" -> Just Secondly
+    "MINUTELY" -> Just Minutely
+    "DAILY"    -> Just Daily
+    "WEEKLY"   -> Just Weekly
+    "MONTHLY"  -> Just Monthly
+    "YEARLY"   -> Just Yearly
+    _          -> Nothing
 
 weekdayToString : Weekday -> String
 weekdayToString wd = case wd of
@@ -233,10 +298,27 @@ weekdayToString wd = case wd of
     Time.Sat -> "SA"
     Time.Sun -> "SU"
 
+weekdayFromString : String -> Maybe Weekday
+weekdayFromString s = case s of
+    "MO" -> Just Time.Mon
+    "TU" -> Just Time.Tue
+    "WE" -> Just Time.Wed
+    "TH" -> Just Time.Thu
+    "FR" -> Just Time.Fri
+    "SA" -> Just Time.Sat
+    "SU" -> Just Time.Sun
+    _    -> Nothing
+
 weekStartToString : WeekStart -> String
 weekStartToString ws = case ws of
     Monday -> "MO"
     Sunday -> "SU"
+
+weekStartFromString : String -> Maybe WeekStart
+weekStartFromString s = case s of
+    "MO" -> Just Monday
+    "SU" -> Just Sunday
+    _    -> Nothing
 
 monthToInt : Month -> Int
 monthToInt month = case month of
@@ -253,10 +335,32 @@ monthToInt month = case month of
     Time.Nov -> 11
     Time.Dec -> 12
 
+monthFromInt : Int -> Maybe Month
+monthFromInt i = case i of
+    1  -> Just Time.Jan
+    2  -> Just Time.Feb
+    3  -> Just Time.Mar
+    4  -> Just Time.Apr
+    5  -> Just Time.May
+    6  -> Just Time.Jun
+    7  -> Just Time.Jul
+    8  -> Just Time.Aug
+    9  -> Just Time.Sep
+    10 -> Just Time.Oct
+    11 -> Just Time.Nov
+    12 -> Just Time.Dec
+    _  -> Nothing
+
 noisinessToString : Noisiness -> String
 noisinessToString n = case n of
     Noisy  -> "audio"
     Silent -> "display"
+
+noisinessFromString : String -> Maybe Noisiness
+noisinessFromString s = case s of
+    "audio"   -> Just Noisy
+    "display" -> Just Silent
+    _         -> Nothing
 
 -- utils
 catMaybes : List (Maybe a) -> List a
@@ -272,6 +376,9 @@ notEmpty l = case l of
 
 decodeOptional : String -> Decoder a -> Decoder ((Maybe a) -> b) -> Decoder b
 decodeOptional key dec pipe = JDP.optional key (JD.map Just dec) Nothing pipe
+
+decodeOptionalList : String -> Decoder a -> Decoder ((List a) -> b) -> Decoder b
+decodeOptionalList key dec pipe = JDP.optional key (JD.list dec) [] pipe
 
 decodeOrFail : String -> Decoder (Maybe a) -> Decoder a
 decodeOrFail msg d = d |> JD.andThen (\m -> case m of
