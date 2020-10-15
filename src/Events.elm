@@ -68,6 +68,7 @@ type Noisiness
 type Freq
     = Secondly
     | Minutely
+    | Hourly
     | Daily
     | Weekly
     | Monthly
@@ -273,6 +274,7 @@ freqToString : Freq -> String
 freqToString freq = case freq of
     Secondly -> "SECONDLY"
     Minutely -> "MINUTELY"
+    Hourly   -> "HOURLY"
     Daily    -> "DAILY"
     Weekly   -> "WEEKLY"
     Monthly  -> "MONTHLY"
@@ -282,6 +284,7 @@ freqFromString : String -> Maybe Freq
 freqFromString s = case s of
     "SECONDLY" -> Just Secondly
     "MINUTELY" -> Just Minutely
+    "HOURLY"   -> Just Hourly
     "DAILY"    -> Just Daily
     "WEEKLY"   -> Just Weekly
     "MONTHLY"  -> Just Monthly
