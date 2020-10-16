@@ -32,12 +32,12 @@ fuzzEventData = Fuzz.constant EventData
 fuzzDateTime : Fuzzer DateTime
 fuzzDateTime = Fuzz.constant DateTime
     |> fuzzField "year" (Fuzz.intRange 1900 3000)
-    |> fuzzField "month" fuzzMonth 
+    |> fuzzField "month" fuzzMonth
     |> fuzzField "day" (Fuzz.intRange 1 31) -- maybe 28 would be better? :)
     |> fuzzField "hour" (Fuzz.intRange 0 23)
     |> fuzzField "minute" (Fuzz.intRange 0 59)
     |> fuzzField "second" (Fuzz.intRange 0 60)
-    |> fuzzField "timezone" (fuzzAny Timezones.allTimezones)
+    |> fuzzField "timezone" (fuzzAny Timezones.all)
 
 fuzzRepeat : Fuzzer Repeat
 fuzzRepeat = Fuzz.constant Repeat

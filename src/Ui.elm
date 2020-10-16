@@ -18,6 +18,8 @@ import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
 import Utils
 import CardContent as CardContent exposing (CardContent)
+import Events
+import Settings as Settings exposing (Settings)
 
 
 type alias Model =
@@ -26,6 +28,7 @@ type alias Model =
     , state: UserState
     , expanded: PathTree ()
     , error: Maybe ErrorMessage
+    , settings: Settings
     }
 
 type alias EditContext =
@@ -100,6 +103,7 @@ init rootCard =
             , state = None Nothing
             , expanded = PT.empty
             , error = Nothing
+            , settings = Settings.default
             }
     in let
         (model1, actions) = syncCards model

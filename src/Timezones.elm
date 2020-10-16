@@ -1,5 +1,6 @@
-module Timezones exposing ( Timezone, allTimezones, encodeTimezone, decodeTimezone
-                          , timezoneToString, timezoneFromString, timezoneOf )
+module Timezones exposing ( Timezone, all, encode, decode
+                          , toString, fromString, timezoneOf
+                          , default)
 
 import Time
 import TimeZone
@@ -14,24 +15,27 @@ import Json.Decode.Pipeline as JDP
 
 type Timezone = Timezone String Time.Zone
 
-allTimezones : List Timezone
-allTimezones = TimeZone.zones
+default : Timezone
+default = Timezone "Europe/Sofia" (TimeZone.europe__sofia ())
+
+all : List Timezone
+all = TimeZone.zones
     |> Dict.toList
     |> List.map (\(name, f) -> Timezone name (f ()))
 
-encodeTimezone : Timezone -> JE.Value
-encodeTimezone tz = JE.string (timezoneToString tz)
+encode : Timezone -> JE.Value
+encode tz = JE.string (toString tz)
 
-decodeTimezone : Decoder Timezone
-decodeTimezone = JD.string
-    |> JD.map timezoneFromString
+decode : Decoder Timezone
+decode = JD.string
+    |> JD.map fromString
     |> decodeOrFail "invalid timezone"
 
-timezoneToString : Timezone -> String
-timezoneToString (Timezone name _) = name
+toString : Timezone -> String
+toString (Timezone name _) = name
 
-timezoneFromString : String -> Maybe Timezone
-timezoneFromString name = Dict.get name TimeZone.zones
+fromString : String -> Maybe Timezone
+fromString name = Dict.get name TimeZone.zones
     |> Maybe.map (\f -> Timezone name (f ()))
 
 timezoneOf : Timezone -> Time.Zone

@@ -2,7 +2,7 @@ module Events exposing (..)
 
 import Time
 import Time.Extra
-import Timezones exposing (..)
+import Timezones as Timezones exposing (Timezone)
 
 import Utils exposing (..)
 
@@ -211,13 +211,13 @@ decodeReminderRepeat =
 encodeDateTime : DateTime -> JE.Value
 encodeDateTime dt =
     JE.object
-        [ ( "year",      JE.int         dt.year )
-        , ( "month",     JE.int         (monthToInt dt.month) )
-        , ( "day",       JE.int         dt.day )
-        , ( "hour",      JE.int         dt.hour )
-        , ( "minute",    JE.int         dt.minute )
-        , ( "second",    JE.int         dt.second )
-        , ( "timezone",  encodeTimezone dt.timezone  )
+        [ ( "year",      JE.int           dt.year )
+        , ( "month",     JE.int           (monthToInt dt.month) )
+        , ( "day",       JE.int           dt.day )
+        , ( "hour",      JE.int           dt.hour )
+        , ( "minute",    JE.int           dt.minute )
+        , ( "second",    JE.int           dt.second )
+        , ( "timezone",  Timezones.encode dt.timezone  )
         ]
 
 decodeDateTime : Decoder DateTime
@@ -228,10 +228,10 @@ decodeDateTime = JD.succeed DateTime
     |> JDP.required "hour"     JD.int
     |> JDP.required "minute"   JD.int
     |> JDP.required "second"   JD.int
-    |> JDP.required "timezone" decodeTimezone
+    |> JDP.required "timezone" Timezones.decode
 
 dateTimeFromTime : Timezone -> Time.Posix -> DateTime
-dateTimeFromTime tz t = let tzd = timezoneOf tz in
+dateTimeFromTime tz t = let tzd = Timezones.timezoneOf tz in
     { year      = Time.toYear   tzd t
     , month     = Time.toMonth  tzd t
     , day       = Time.toDay    tzd t
