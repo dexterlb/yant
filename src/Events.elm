@@ -111,8 +111,16 @@ type alias SignedDuration = Int
 
 -- *******
 
--- defaultEventData : Timezone -> Time.Posix -> EventData
--- defaultEventData tz 
+defaultEventData : Timezone -> Time.Posix -> EventData
+defaultEventData tz time = let dt = dateTimeFromTime tz time in
+    { start = dt
+    , end   = Nothing
+    , allDay = False
+    , repeat = Nothing
+    , busy   = False
+    , task   = False
+    , reminders = []
+    }
 
 -- JSON stuff starts here
 
@@ -221,6 +229,17 @@ decodeDateTime = JD.succeed DateTime
     |> JDP.required "minute"   JD.int
     |> JDP.required "second"   JD.int
     |> JDP.required "timezone" decodeTimezone
+
+dateTimeFromTime : Timezone -> Time.Posix -> DateTime
+dateTimeFromTime tz t = let tzd = timezoneOf tz in
+    { year      = Time.toYear   tzd t
+    , month     = Time.toMonth  tzd t
+    , day       = Time.toDay    tzd t
+    , hour      = Time.toHour   tzd t
+    , minute    = Time.toMinute tzd t
+    , second    = Time.toSecond tzd t
+    , timezone  = tz
+    }
 
 encodeFreq : Freq -> JE.Value
 encodeFreq freq = JE.string (freqToString freq)

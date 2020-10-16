@@ -1,5 +1,5 @@
 module Timezones exposing ( Timezone, allTimezones, encodeTimezone, decodeTimezone
-                          , timezoneToString, timezoneFromString )
+                          , timezoneToString, timezoneFromString, timezoneOf )
 
 import Time
 import TimeZone
@@ -33,3 +33,6 @@ timezoneToString (Timezone name _) = name
 timezoneFromString : String -> Maybe Timezone
 timezoneFromString name = Dict.get name TimeZone.zones
     |> Maybe.map (\f -> Timezone name (f ()))
+
+timezoneOf : Timezone -> Time.Zone
+timezoneOf (Timezone _ tz) = tz
