@@ -16,7 +16,8 @@ import Json.Encode as JE
 jsonTests : Test
 jsonTests =
     describe "json encoding and decoding"
-        [ Fuzz.Json.roundtrip "EventData encode/decode" fuzzEventData encodeEventData decodeEventData ]
+        [ roundtrip "EventData encode/decode" fuzzEventData encodeEventData decodeEventData
+        , roundtrip "DateTime encode/decode" fuzzDateTime encodeDateTime decodeDateTime ]
 
 fuzzEventData : Fuzzer EventData
 fuzzEventData = Fuzz.constant EventData
@@ -93,3 +94,11 @@ fuzzOptional name a f = fuzzField name (Fuzz.maybe a) f
 
 fuzzAny : List a -> Fuzzer a
 fuzzAny l = l |> List.map Fuzz.constant |> Fuzz.oneOf
+
+{-| Roundtrip takes a fuzzer, a json encoder, a json decoder, and sees if an encode/decode cycle succeeds without losing any data.
+-}
+roundtrip : String -> Fuzzer a -> (a -> JE.Value) -> JD.Decoder a -> Test
+roundtrip name fuzz encode decode =
+    Test.fuzz fuzz ("json roundtrip tests for " ++ name) <|
+        \a -> (let val = a |> encode |> JE.encode 0
+                in (val, val |> JD.decodeString decode) |> Expect.equal (val, Ok a) )

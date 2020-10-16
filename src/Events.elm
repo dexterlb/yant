@@ -195,40 +195,26 @@ decodeReminderRepeat =
         ( JD.field "interval" JD.int )
 
 encodeDateTime : DateTime -> JE.Value
-encodeDateTime dt
-    = let (dts, tz) = dateTimeToStrings dt
-    in
-        JE.object
-            [ ( "date_time", JE.string dts )
-            , ( "timezone",  JE.string tz  )
-            ]
+encodeDateTime dt =
+    JE.object
+        [ ( "year",      JE.int    dt.year )
+        , ( "month",     JE.int    (monthToInt dt.month) )
+        , ( "day",       JE.int    dt.day )
+        , ( "hour",      JE.int    dt.hour )
+        , ( "minute",    JE.int    dt.minute )
+        , ( "second",    JE.int    dt.second )
+        , ( "timezone",  JE.string dt.timezone  )
+        ]
 
 decodeDateTime : Decoder DateTime
-decodeDateTime = JD.map2 dateTimeFromStrings
-    (JD.field "date_time" JD.string)
-    (JD.field "timezone"  JD.string)
-    |> decodeOrFail "unable to decode date-time"
-
-dateTimeFromStrings : String -> Timezone -> Maybe DateTime
-dateTimeFromStrings dt tz
-    = Time.Extra.fromIso8601Date Time.utc dt
-    |> Maybe.map (\t ->
-        { year =    Time.toYear   Time.utc t
-        , month =   Time.toMonth  Time.utc t
-        , day =     Time.toDay    Time.utc t
-        , hour =    Time.toHour   Time.utc t
-        , minute =  Time.toMinute Time.utc t
-        , second =  Time.toSecond Time.utc t
-        , timezone = tz
-        })
-
-dateTimeToStrings : DateTime -> (String, Timezone)
-dateTimeToStrings dt
-    = let fakePosixTime = Time.Extra.fromDateTuple Time.utc (dt.year, dt.month, dt.day)
-                    |> Time.Extra.addHours dt.hour
-                    |> Time.Extra.addMinutes dt.minute
-                    |> Time.Extra.addSeconds dt.second
-    in (Time.Extra.toIso8601DateTimeUTC fakePosixTime, dt.timezone)
+decodeDateTime = JD.succeed DateTime
+    |> JDP.required "year"     JD.int
+    |> JDP.required "month"    (JD.map monthFromInt JD.int |> decodeOrFail "not a valid month")
+    |> JDP.required "day"      JD.int
+    |> JDP.required "hour"     JD.int
+    |> JDP.required "minute"   JD.int
+    |> JDP.required "second"   JD.int
+    |> JDP.required "timezone" JD.string
 
 encodeFreq : Freq -> JE.Value
 encodeFreq freq = JE.string (freqToString freq)
