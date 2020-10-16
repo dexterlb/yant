@@ -1,9 +1,17 @@
-module Utils exposing (hash, hash01)
+module Utils exposing ( hash, hash01, catMaybes, notEmpty
+                      , decodeOptional, decodeOptionalList, decodeOrFail )
 
 
 import Bitwise
 import Char
 import String
+
+import Json.Encode as JE
+import Json.Decode exposing (Decoder)
+import Json.Decode as JD
+import Json.Decode.Pipeline as JDP
+
+-- hashing utils
 
 hash01 : String -> Float
 hash01 s = modBy 1024 (hash s)
@@ -24,3 +32,30 @@ hash str = String.foldl updateHash 5381 str
 updateHash : Char -> Int -> Int
 updateHash c h =
   (Bitwise.shiftLeftBy 5 h) + h + Char.toCode c
+
+
+-- data structure utils
+
+catMaybes : List (Maybe a) -> List a
+catMaybes l = case l of
+    []               -> []
+    ((Just x) :: xs) -> x :: (catMaybes xs)
+    (Nothing  :: xs) ->       catMaybes xs
+
+notEmpty : List a -> Maybe (List a)
+notEmpty l = case l of
+    [] -> Nothing
+    _  -> Just l
+
+-- json utils
+
+decodeOptional : String -> Decoder a -> Decoder ((Maybe a) -> b) -> Decoder b
+decodeOptional key dec pipe = JDP.optional key (JD.map Just dec) Nothing pipe
+
+decodeOptionalList : String -> Decoder a -> Decoder ((List a) -> b) -> Decoder b
+decodeOptionalList key dec pipe = JDP.optional key (JD.list dec) [] pipe
+
+decodeOrFail : String -> Decoder (Maybe a) -> Decoder a
+decodeOrFail msg d = d |> JD.andThen (\m -> case m of
+    Nothing -> JD.fail msg
+    Just  x -> JD.succeed x)

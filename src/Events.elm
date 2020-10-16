@@ -2,7 +2,9 @@ module Events exposing (..)
 
 import Time
 import Time.Extra
-import Timezones exposing (Timezone)
+import Timezones exposing (..)
+
+import Utils exposing (..)
 
 import Json.Encode as JE
 import Json.Decode exposing (Decoder)
@@ -107,6 +109,10 @@ type WeekStart
 type alias Duration = Int   -- number of seconds
 type alias SignedDuration = Int
 
+-- *******
+
+-- defaultEventData : Timezone -> Time.Posix -> EventData
+-- defaultEventData tz 
 
 -- JSON stuff starts here
 
@@ -197,13 +203,13 @@ decodeReminderRepeat =
 encodeDateTime : DateTime -> JE.Value
 encodeDateTime dt =
     JE.object
-        [ ( "year",      JE.int    dt.year )
-        , ( "month",     JE.int    (monthToInt dt.month) )
-        , ( "day",       JE.int    dt.day )
-        , ( "hour",      JE.int    dt.hour )
-        , ( "minute",    JE.int    dt.minute )
-        , ( "second",    JE.int    dt.second )
-        , ( "timezone",  JE.string dt.timezone  )
+        [ ( "year",      JE.int         dt.year )
+        , ( "month",     JE.int         (monthToInt dt.month) )
+        , ( "day",       JE.int         dt.day )
+        , ( "hour",      JE.int         dt.hour )
+        , ( "minute",    JE.int         dt.minute )
+        , ( "second",    JE.int         dt.second )
+        , ( "timezone",  encodeTimezone dt.timezone  )
         ]
 
 decodeDateTime : Decoder DateTime
@@ -214,7 +220,7 @@ decodeDateTime = JD.succeed DateTime
     |> JDP.required "hour"     JD.int
     |> JDP.required "minute"   JD.int
     |> JDP.required "second"   JD.int
-    |> JDP.required "timezone" JD.string
+    |> JDP.required "timezone" decodeTimezone
 
 encodeFreq : Freq -> JE.Value
 encodeFreq freq = JE.string (freqToString freq)
@@ -255,6 +261,7 @@ decodeNoisiness : Decoder Noisiness
 decodeNoisiness = JD.string
     |> JD.map noisinessFromString
     |> decodeOrFail "not a valid noisiness"
+
 
 freqToString : Freq -> String
 freqToString freq = case freq of
@@ -350,26 +357,3 @@ noisinessFromString s = case s of
     "audio"   -> Just Noisy
     "display" -> Just Silent
     _         -> Nothing
-
--- utils
-catMaybes : List (Maybe a) -> List a
-catMaybes l = case l of
-    []               -> []
-    ((Just x) :: xs) -> x :: (catMaybes xs)
-    (Nothing  :: xs) ->       catMaybes xs
-
-notEmpty : List a -> Maybe (List a)
-notEmpty l = case l of
-    [] -> Nothing
-    _  -> Just l
-
-decodeOptional : String -> Decoder a -> Decoder ((Maybe a) -> b) -> Decoder b
-decodeOptional key dec pipe = JDP.optional key (JD.map Just dec) Nothing pipe
-
-decodeOptionalList : String -> Decoder a -> Decoder ((List a) -> b) -> Decoder b
-decodeOptionalList key dec pipe = JDP.optional key (JD.list dec) [] pipe
-
-decodeOrFail : String -> Decoder (Maybe a) -> Decoder a
-decodeOrFail msg d = d |> JD.andThen (\m -> case m of
-    Nothing -> JD.fail msg
-    Just  x -> JD.succeed x)
