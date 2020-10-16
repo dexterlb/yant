@@ -23,13 +23,9 @@ import CardContent as CardContent exposing (CardContent)
 type alias Model =
     { cards: Cards
     , rootCard: CardID
-    , context: Context
-    , error: Maybe ErrorMessage
-    }
-
-type alias Context =
-    { state: UserState
+    , state: UserState
     , expanded: PathTree ()
+    , error: Maybe ErrorMessage
     }
 
 type alias EditContext =
@@ -101,10 +97,8 @@ init rootCard =
         model =
             { cards = noCards
             , rootCard = rootCard
-            , context =
-                { state = None Nothing
-                , expanded = PT.empty
-                }
+            , state = None Nothing
+            , expanded = PT.empty
             , error = Nothing
             }
     in let
@@ -113,10 +107,10 @@ init rootCard =
         (model1, Cmd.none, actions)
 
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
-update msg model = let oldContext = model.context in case msg of
+update msg model = case msg of
     TextChanged text -> ( updateEditText text model, Cmd.none, [])
-    SelectCard path  -> ( newState (Selected path (clipboardOf model.context.state)) model, Cmd.none, [] )
-    DeselectCard     -> ( newState (None (clipboardOf model.context.state)) model, Cmd.none, [] )
+    SelectCard path  -> ( newState (Selected path (clipboardOf model.state)) model, Cmd.none, [] )
+    DeselectCard     -> ( newState (None (clipboardOf model.state)) model, Cmd.none, [] )
     EditCard path    ->
         ( editMode path model, Cmd.none, [])
     UnlinkCard path -> case NE.tail path |> List.head of
@@ -126,13 +120,13 @@ update msg model = let oldContext = model.context in case msg of
             let model1 = { model | cards = delChildFromCard parent (NE.head path) model.cards }
             in
                 ( model1, Cmd.none, (saveCard parent model1.cards) )
-    SaveEdit -> case model.context.state of
+    SaveEdit -> case model.state of
         Editing ectx -> let (cards, cmd, actions) = editCard ectx model.cards in
-            ( { model | cards = cards, context = { oldContext | state = None Nothing } }, cmd, actions )
+            ( { model | cards = cards, state = None Nothing }, cmd, actions )
         _ -> (model, Cmd.none, [])
-    CancelEdit -> case model.context.state of
+    CancelEdit -> case model.state of
         Editing ectx ->
-            ( { model | context = { oldContext | state = None Nothing } }, Cmd.none, [] )
+            ( { model | state = None Nothing }, Cmd.none, [] )
         _ -> (model, Cmd.none, [])
     AddChild ins -> ( model, randomID (AddChildWithID ins), [])
     AddChildWithID ins id ->
@@ -169,7 +163,7 @@ update msg model = let oldContext = model.context in case msg of
             ( model1, Cmd.none, actions )
 
     SetClipboard clip ->
-        let model1 = case model.context.state of
+        let model1 = case model.state of
                         Selected path _ -> newState (Selected path clip) model
                         None _          -> newState (None clip) model
                         _               -> model
@@ -205,7 +199,7 @@ pushMsg inMsg model = case inMsg of
     GotCard card ->
         let model1 = { model | cards = Cards.add card model.cards }
         in let
-            model2 = case model1.context.state of
+            model2 = case model1.state of
                         PendingEdit path -> case (NE.head path) == card.id of
                             True -> editMode path model1
                             False -> model1
@@ -214,43 +208,43 @@ pushMsg inMsg model = case inMsg of
             ( model2 , Cmd.none, [] )
 
 
-viewCard : Context -> CardPath -> Cards -> Html Msg
-viewCard ctx path cards = case Dict.get (NE.head path) cards of
+viewCard : Model -> CardPath -> Cards -> Html Msg
+viewCard model path cards = case Dict.get (NE.head path) cards of
     Nothing   -> div [ class "card", class "waiting" ] [ text "waiting for card" ]
-    Just card -> case isExpanded ctx path of
+    Just card -> case isExpanded model path of
         True ->
             div [ class "card", class "expanded" ]
-                [ viewCardBody ctx path card
-                , viewCardChildren ctx path cards card.children
+                [ viewCardBody model path card
+                , viewCardChildren model path cards card.children
                 ]
         False ->
             div [ class "card", class "collapsed" ]
-                [ viewCardBody ctx path card
+                [ viewCardBody model path card
                 ]
 
-viewCardChildren : Context -> CardPath -> Cards -> List CardID -> Html Msg
-viewCardChildren ctx path cards childIDs =
+viewCardChildren : Model -> CardPath -> Cards -> List CardID -> Html Msg
+viewCardChildren model path cards childIDs =
     div [ class "card-children" ]
-        (List.map (\id -> viewCard ctx (NE.cons id path) cards) childIDs)
+        (List.map (\id -> viewCard model (NE.cons id path) cards) childIDs)
 
-viewCardBody : Context -> CardPath -> Card -> Html Msg
-viewCardBody ctx path card =
-    case ctx.state of
-        None _ -> viewPlainCardBody ctx path card
-        PendingEdit _ -> viewPlainCardBody ctx path card
+viewCardBody : Model -> CardPath -> Card -> Html Msg
+viewCardBody model path card =
+    case model.state of
+        None _ -> viewPlainCardBody model path card
+        PendingEdit _ -> viewPlainCardBody model path card
         Editing ectx -> case ectx.path == path of
-            True -> viewEditingCardBody ctx path card ectx
-            False -> viewPlainCardBody ctx path card
+            True -> viewEditingCardBody model path card ectx
+            False -> viewPlainCardBody model path card
         Selected spath clip -> case spath == path of
-            True -> viewSelectedCardBody ctx path card clip
-            False -> viewPlainCardBody ctx path card
+            True -> viewSelectedCardBody model path card clip
+            False -> viewPlainCardBody model path card
 
 
 
-viewEditingCardBody : Context -> CardPath -> Card -> EditContext -> Html Msg
-viewEditingCardBody ctx path card ectx = div
+viewEditingCardBody : Model -> CardPath -> Card -> EditContext -> Html Msg
+viewEditingCardBody model path card ectx = div
     [ class "card-body", class "editing", cardColour path CardEditing ]
-    [ viewCardControls ctx path card
+    [ viewCardControls model path card
     , div [ class "card-vbox" ]
         [ textarea
             [ value ectx.content.text
@@ -268,23 +262,23 @@ viewEditingCardBody ctx path card ectx = div
         ]
     ]
 
-viewPlainCardBody : Context -> CardPath -> Card -> Html Msg
-viewPlainCardBody ctx path card = div
+viewPlainCardBody : Model -> CardPath -> Card -> Html Msg
+viewPlainCardBody model path card = div
     [ class "card-body", class "plain"
     , onClick (SelectCard path)
     , cardColour path CardNone
     ]
-    [ viewCardControls ctx path card
+    [ viewCardControls model path card
     , div [ class "card-vbox" ]
         [ viewCardContent card
         ]
     ]
 
-viewSelectedCardBody : Context -> CardPath -> Card -> Maybe Clipboard -> Html Msg
-viewSelectedCardBody ctx path card clip = div
+viewSelectedCardBody : Model -> CardPath -> Card -> Maybe Clipboard -> Html Msg
+viewSelectedCardBody model path card clip = div
     [ class "card-body", class "selected", cardColour path CardSelected ]
 
-    [ viewCardControls ctx path card
+    [ viewCardControls model path card
     , div [ class "card-vbox" ]
         [ viewCardButtonBar path card clip
         , viewCardContent card
@@ -366,17 +360,17 @@ viewCardToolbar path card = div [ class "button-bar" ] (
             [ text "mark done" ]
     ])
 
-viewCardControls : Context -> CardPath -> Card -> Html Msg
-viewCardControls ctx path card =
+viewCardControls : Model -> CardPath -> Card -> Html Msg
+viewCardControls model path card =
     case List.isEmpty card.children of
-        True  -> viewChildlessCardControls  ctx path
+        True  -> viewChildlessCardControls  model path
         False ->
-            case isExpanded ctx path of
-                True  -> viewExpandedCardControls  ctx path
-                False -> viewCollapsedCardControls ctx path
+            case isExpanded model path of
+                True  -> viewExpandedCardControls  model path
+                False -> viewCollapsedCardControls model path
 
-viewExpandedCardControls : Context -> CardPath -> Html Msg
-viewExpandedCardControls ctx path = div [ class "controls" ]
+viewExpandedCardControls : Model -> CardPath -> Html Msg
+viewExpandedCardControls model path = div [ class "controls" ]
     [ button
         [ class "expander", onClick (Collapse path) ]
         [ div [ class "sr-only" ] [ text "collapse" ]
@@ -384,8 +378,8 @@ viewExpandedCardControls ctx path = div [ class "controls" ]
         ]
     ]
 
-viewCollapsedCardControls : Context -> CardPath -> Html Msg
-viewCollapsedCardControls ctx path = div [ class "controls" ]
+viewCollapsedCardControls : Model -> CardPath -> Html Msg
+viewCollapsedCardControls model path = div [ class "controls" ]
     [ button
         [ class "expander", onClick (Expand path) ]
         [ div [ class "sr-only" ] [ text "expand" ]
@@ -393,8 +387,8 @@ viewCollapsedCardControls ctx path = div [ class "controls" ]
         ]
     ]
 
-viewChildlessCardControls : Context -> CardPath -> Html Msg
-viewChildlessCardControls ctx path = div [ class "controls" ]
+viewChildlessCardControls : Model -> CardPath -> Html Msg
+viewChildlessCardControls model path = div [ class "controls" ]
     [ button
         [ class "disabled-expander", disabled True ]
         [ div [ class "sr-only" ] [ text "has no children" ]
@@ -402,8 +396,8 @@ viewChildlessCardControls ctx path = div [ class "controls" ]
         ]
     ]
 
-viewMainMenu : Context -> Html Msg
-viewMainMenu ctx = div [ class "main-menu" ]
+viewMainMenu : Model -> Html Msg
+viewMainMenu model = div [ class "main-menu" ]
     [ div [ class "button-bar" ]
         [ button
             [ onClick NotImplementedMsg ]
@@ -425,54 +419,50 @@ viewError error = case error of
         )]
 
 view : Model -> Html Msg
-view { context, cards, rootCard, error } =
+view model =
     div []
-        ( (viewError error) ++
-        [ viewMainMenu context
+        ( (viewError model.error) ++
+        [ viewMainMenu model
         , div [ class "cards" ]
-            [ viewCard context (NE.fromElement rootCard) cards
+            [ viewCard model (NE.fromElement model.rootCard) model.cards
             ]
         ])
 
 -- Helpers
 
-isExpanded : Context -> CardPath -> Bool
-isExpanded ctx path = PT.member path ctx.expanded
+isExpanded : Model -> CardPath -> Bool
+isExpanded model path = PT.member path model.expanded
 
 expand : CardPath -> Model -> (Model, Actions)
 expand path model =
-    let oldContext = model.context
-    in let
-        model1 = { model | context =
-            { oldContext | expanded = PT.put path () oldContext.expanded } }
+    let
+        model1 = { model | expanded = PT.put path () model.expanded }
     in syncCards model1
 
 collapse : CardPath -> Model -> (Model, Actions)
 collapse path model =
-    let oldContext = model.context
-    in let
-        model1 = { model | context =
-            { oldContext | expanded = PT.drop path oldContext.expanded } }
+    let
+        model1 = { model | expanded = PT.drop path model.expanded }
     in syncCards model1
 
 -- todo: rewrite this to use updateState
 updateEditContext : (EditContext -> EditContext) -> Model -> Model
-updateEditContext f model = let oldContext = model.context in case model.context.state of
-    Editing ectx -> { model | context = { oldContext | state = Editing (f ectx) } }
+updateEditContext f model = case model.state of
+    Editing ectx -> { model | state = Editing (f ectx) }
     _            -> model
 
 updateEditText : String -> Model -> Model
 updateEditText text = updateEditContext
-    (\ctx -> let content = ctx.content in
-        { ctx | content = { content | text = text } }
+    (\model -> let content = model.content in
+        { model | content = { content | text = text } }
     )
 
 newState : UserState -> Model -> Model
 newState state = updateState (\_ -> state)
 
 updateState : (UserState -> UserState) -> Model -> Model
-updateState f model = let oldContext = model.context in
-    { model | context = { oldContext | state = f oldContext.state } }
+updateState f model =
+    { model | state = f model.state }
 
 
 editCard : EditContext -> Cards -> (Cards, Cmd Msg, Actions)
@@ -540,7 +530,7 @@ neededCards m = neededCardsFrom (NE.fromElement m.rootCard) m
 neededCardsFrom : CardPath -> Model -> Set CardID
 neededCardsFrom path m =
     Set.insert (NE.head path) <|
-        case isExpanded m.context path of
+        case isExpanded m path of
             True ->
                 (List.foldr
                     (\child all -> Set.union all (neededCardsFrom (NE.cons child path) m)) Set.empty
