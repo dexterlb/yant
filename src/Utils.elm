@@ -1,5 +1,6 @@
 module Utils exposing ( hash, hash01, catMaybes, notEmpty
-                      , decodeOptional, decodeOptionalList, decodeOrFail )
+                      , decodeOptional, decodeOptionalList, decodeOrFail
+                      , onClick )
 
 
 import Bitwise
@@ -10,6 +11,9 @@ import Json.Encode as JE
 import Json.Decode exposing (Decoder)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
+
+import Html
+import Html.Events as HE
 
 -- hashing utils
 
@@ -59,3 +63,8 @@ decodeOrFail : String -> Decoder (Maybe a) -> Decoder a
 decodeOrFail msg d = d |> JD.andThen (\m -> case m of
     Nothing -> JD.fail msg
     Just  x -> JD.succeed x)
+
+-- html utils
+
+onClick : msg -> Html.Attribute msg
+onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))

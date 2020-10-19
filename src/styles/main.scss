@@ -38,14 +38,34 @@ pre, code {
     flex-direction: row;
 
     button {
-        background-color: rgba(100, 100, 100, 0.3);
+        background-color: rgba(256, 256, 256, 0.9);
         margin: 0.2em;
 
         border: none;
         outline: none;
 
         &:hover {
-            background-color: rgba(100, 100, 100, 0.5);
+            background-color: rgba(256, 256, 256, 1);
+        }
+    }
+
+    .button-group-general {
+        button {
+            background-color: rgba(100, 100, 100, 0.3);
+
+            &:hover {
+                background-color: rgba(100, 100, 100, 0.5);
+            }
+        }
+    }
+
+    .button-group-content {
+        button {
+            background-color: rgba(200, 50, 10, 0.3);
+
+            &:hover {
+                background-color: rgba(200, 50, 10, 0.5);
+            }
         }
     }
 }

@@ -8,13 +8,13 @@ import Dict as Dict exposing (Dict)
 import Json.Encode as JE
 import Json.Decode as JD
 
-import CardContent as CardContent exposing (CardContent)
+import CardContent as CardContent
 
 type alias CardID = String
 
 type alias Card =
     { id:       CardID
-    , content:  CardContent
+    , content:  CardContent.Data
     , children: List CardID
     }
 
