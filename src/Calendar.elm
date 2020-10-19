@@ -1,4 +1,4 @@
-module Events exposing (..)
+module Calendar exposing (..)
 
 import Time
 import Time.Extra
@@ -11,15 +11,15 @@ import Json.Decode exposing (Decoder)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
 
-type alias Event =
-    { data        : EventData
+type alias EventRecord =
+    { data        : Event
     , summary     : String
     , description : String
     , timestamp   : Maybe DateTime
     , status      : EventStatus
     }
 
-type alias EventData =
+type alias Event =
     { start  : DateTime
     , end    : Maybe DateTime
     , allDay : Bool
@@ -111,8 +111,8 @@ type alias SignedDuration = Int
 
 -- *******
 
-defaultEventData : Timezone -> Time.Posix -> EventData
-defaultEventData tz time = let dt = dateTimeFromTime tz time in
+defaultEvent : Timezone -> Time.Posix -> Event
+defaultEvent tz time = let dt = dateTimeFromTime tz time in
     { start = dt
     , end   = Nothing
     , allDay = False
@@ -124,8 +124,8 @@ defaultEventData tz time = let dt = dateTimeFromTime tz time in
 
 -- JSON stuff starts here
 
-encodeEventData : EventData -> JE.Value
-encodeEventData data = JE.object <| catMaybes
+encodeEvent : Event -> JE.Value
+encodeEvent data = JE.object <| catMaybes
     [ Just ( "start", encodeDateTime data.start )
     , Maybe.map ( \end -> ( "end", encodeDateTime end ) ) data.end
     , Just ( "allDay", JE.bool data.allDay )
@@ -135,8 +135,8 @@ encodeEventData data = JE.object <| catMaybes
     , Just ( "alarms", JE.list encodeReminder data.reminders )
     ]
 
-decodeEventData : Decoder EventData
-decodeEventData = JD.succeed EventData
+decodeEvent : Decoder Event
+decodeEvent = JD.succeed Event
     |> JDP.required   "start"  decodeDateTime
     |> decodeOptional "end"    decodeDateTime
     |> JDP.optional   "allDay" JD.bool False

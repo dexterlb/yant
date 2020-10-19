@@ -11,7 +11,7 @@ import Markdown.Html
 import Json.Encode as JE
 import Json.Decode as JD
 
-import Events
+import Calendar
 import Utils exposing (..)
 
 type alias Data =

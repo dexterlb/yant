@@ -18,7 +18,7 @@ import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
 import Utils as Utils exposing (onClick)
 import CardContent as CardContent
-import Events
+import Calendar
 import Settings as Settings exposing (Settings)
 
 
