@@ -125,28 +125,23 @@ update msg model = case msg of
                 ( model1, Cmd.none, (saveCard parent model1.cards) )
     AddChild ins -> ( model, randomID (AddChildWithID ins), [])
     AddChildWithID ins id ->
-        let (newCards, newPath) = insertChild id ins model.cards
-        in let
-            model1 = { model | cards = newCards }
-            parentPath = getParentPath newPath
-        in let (model2, actions1) = expand parentPath model1
-        in let
-            (model3, actions2) = ( model2, (saveCard (NE.head parentPath) model2.cards) ++ actions1 )
+        let (model2, newPath, actions2) = insertChildWithID ins id model
         in
-            ( newState (PendingEdit newPath) model3, Cmd.none, actions2 )
+            ( newState (PendingEdit newPath) model2, Cmd.none, actions2 )
 
     PasteChild ins (oldPath, Move) ->
         let
             (model1, cmd1, actions1) = update (UnlinkCard oldPath) model
         in let
-            (model2, cmd2, actions2) = update (AddChildWithID ins (NE.head oldPath)) model1
-        in  (model2, Cmd.batch [cmd1, cmd2], actions1 ++ actions2)
+            (model2, _, actions2) = insertChildWithID ins (NE.head oldPath) model1
+        in  (model2, cmd1, actions1 ++ actions2)
 
     PasteChild ins (oldPath, Copy) ->
        ( setError NotImplemented model, Cmd.none, [] )
 
     PasteChild ins (oldPath, Link) ->
-        update (AddChildWithID ins (NE.head oldPath)) model
+        let (model2, _, actions2) = insertChildWithID ins (NE.head oldPath) model
+        in (model2, Cmd.none, actions2)
 
     Expand path ->
         let (model1, actions) = expand path model
@@ -158,7 +153,7 @@ update msg model = case msg of
             ( model1, Cmd.none, actions )
 
     SetClipboard clip ->
-        ( { model | clipboard = clip }, Cmd.none, [] )
+        ( setClipboard clip model, Cmd.none, [] )
 
     ContentMsg contentMsg ->
         case model.selectedCard of
@@ -174,8 +169,23 @@ update msg model = case msg of
     ClearError ->
        ( clearError model, Cmd.none, [] )
 
+insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
+insertChildWithID ins id model =
+    let (newCards, newPath) = insertChild id ins model.cards
+    in let
+        model1 = { model | cards = newCards }
+        parentPath = getParentPath newPath
+    in let (model2, actions1) = expand parentPath model1
+    in
+        ( setClipboard Nothing model2
+        , newPath
+        , (saveCard (NE.head parentPath) model2.cards) ++ actions1 )
+
 emptyCmd : (a, b) -> (a, Cmd msg, b)
 emptyCmd (x, y) = (x, Cmd.none, y)
+
+setClipboard : Maybe Clipboard -> Model -> Model
+setClipboard clip model = { model | clipboard = clip }
 
 selectedCardEvent : CardContent.Event -> Model -> (Model, Actions)
 selectedCardEvent evt model = case model.selectedCard of
@@ -217,7 +227,7 @@ pushMsg inMsg model = case inMsg of
         in
             case model1.state of
                 PendingEdit path -> case (NE.head path) == card.id of
-                    True -> let ( model3, cmd, actions3) = update (SelectCard path) model
+                    True -> let ( model3, cmd, actions3) = update (SelectCard path) model1
                             in let
                                 ( model4, actions4 ) = selectedCardEvent CardContent.BeginEdit model3
                             in (model4, cmd, actions4)
