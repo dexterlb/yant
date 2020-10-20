@@ -1,4 +1,4 @@
-module Calendar.EventEditor exposing (Model, init, update, view, getEvent)
+module Calendar.EventEditor exposing (Model, Msg, init, update, view, getEvent)
 
 import Html exposing (Html, div, pre, text, button, textarea, input)
 import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked)
@@ -16,9 +16,9 @@ type Msg
     = Foo
 
 init : Event -> Model
-init evt = { event: evt }
+init evt = { event = evt }
 
-getEvent : Model -> event
+getEvent : Model -> Event
 getEvent { event } = event
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -26,4 +26,4 @@ update msg model = case msg of
     Foo -> (model, Cmd.none)
 
 view : Model -> Html Msg
-view = text "editor goes here"
+view model = text "editor goes here"

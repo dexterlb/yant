@@ -1,4 +1,4 @@
-module CardContent exposing (ViewMode(..), Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event)
+module CardContent exposing (Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event)
 
 import Html exposing (Html, div, text, button, textarea, span)
 import Html.Attributes exposing (class, value, placeholder, style, disabled, title)
@@ -17,6 +17,7 @@ import Task
 
 import Calendar
 import Calendar.UI
+import Calendar.EventEditor
 import Utils exposing (..)
 import Settings exposing (Settings)
 
@@ -38,21 +39,23 @@ type alias Context =
 type State
     = NormalState
     | EditState EditContext
-
-type ViewMode
-    = Selected
-    | Deselected
+    | EditCalEventState EditCalEventContext
 
 type Msg
     = SetDone Bool
-    | AddCalEvent
-    | AddCalEventWithTime Time.Posix
     | Edit
     | SaveEdit
     | CancelEdit
     | TextChanged String
 
+    | CalEventEditorMsg Calendar.EventEditor.Msg
+
+    | AddCalEvent
+    | AddCalEventWithTime Time.Posix
+    | EditCalEvent Calendar.Event Int
     | DeleteCalEvent Int
+    | SaveCalEvent
+    | CancelCalEvent
 
 type Event
     = Destroy
@@ -67,16 +70,22 @@ type alias EditContext =
     { text: String
     }
 
+type alias EditCalEventContext =
+    { calEventIndex: Int
+    , editor: Calendar.EventEditor.Model
+    }
+
 emptyModel : Data -> Model
 emptyModel data =
     { state = NormalState
     , data  = data
     }
 
-view : ViewMode -> Model -> Html Msg
-view mode model = case model.state of
-    NormalState     -> viewNormal mode model
-    EditState ectx  -> viewEdit model ectx
+view : Model -> Html Msg
+view model = case model.state of
+    NormalState         -> viewNormal model
+    EditCalEventState _ -> viewNormal model
+    EditState ectx      -> viewEdit model ectx
 
 viewEdit : Model -> EditContext -> Html Msg
 viewEdit model ectx = div
@@ -88,16 +97,24 @@ viewEdit model ectx = div
         ] []
     ]
 
-viewNormal : ViewMode -> Model -> Html Msg
-viewNormal mode model = viewDataOnly mode model.data
+viewNormal : Model -> Html Msg
+viewNormal model = div [ class "card-content" ]
+    [ viewBody model.data
+    , case model.state of
+        EditCalEventState ectx -> viewCalEvents (Just ectx) model.data.calEvents
+        _                      -> viewCalEvents Nothing     model.data.calEvents
+    ]
 
-viewDataOnly : ViewMode -> Data -> Html Msg
-viewDataOnly mode data = div
+viewDataOnly : Data -> Html Msg
+viewDataOnly data = div
     [ class "card-content" ]
-    (
-    [ viewIndicators mode data
-    ] ++
-    ( [ case data.text
+    [ viewIndicators data
+    , viewBody data
+    ]
+
+viewBody : Data -> Html Msg
+viewBody data =
+    ( case data.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
             |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
@@ -108,21 +125,16 @@ viewDataOnly mode data = div
             Err errors ->
                 div [ class "markdown-errors" ] [ text errors ]
 
-    ] |> detectMaths data.text ) ++
-    [ case mode of
-        Selected   -> viewCalEvents data.calEvents
-        Deselected -> text "" -- fixme
-    ])
+    ) |> detectMaths data.text
 
-viewIndicators : ViewMode -> Data -> Html Msg
-viewIndicators mode data = let indicatorElements = viewIndicatorElements mode data
-    in case (mode, indicatorElements) of
-        (_, [])       -> text "" -- fixme
-        (Selected, _) -> text ""
-        _             -> div [ class "indicators" ] indicatorElements
+viewIndicators : Data -> Html Msg
+viewIndicators data = let indicatorElements = viewIndicatorElements data
+    in case indicatorElements of
+        [] -> text "" -- fixme
+        _  -> div [ class "indicators" ] indicatorElements
 
-viewIndicatorElements : ViewMode -> Data -> List (Html Msg)
-viewIndicatorElements _ data = case data.calEvents of
+viewIndicatorElements : Data -> List (Html Msg)
+viewIndicatorElements data = case data.calEvents of
     [] -> []
     _  -> [ indicator "indicator-cal-event" "item has a calendar event" ]
 
@@ -134,8 +146,9 @@ indicator className textContent =
 
 buttons : Model -> Html Msg
 buttons model = case model.state of
-    NormalState -> viewNormalButtonBar model
-    EditState _ -> viewEditButtonBar model
+    NormalState         -> viewNormalButtonBar model
+    EditCalEventState _ -> viewNormalButtonBar model
+    EditState _         -> viewEditButtonBar model
 
 event : Context -> Event -> Model -> (Model, Cmd Msg, Actions)
 event ctx evt model = case (evt, model.state) of
@@ -147,20 +160,42 @@ event ctx evt model = case (evt, model.state) of
         in (model2, Cmd.batch [ cmd1, cmd2 ], actions1 ++ actions2)
     (BeginEdit, _) -> update ctx Edit model
 
-viewCalEvents : List Calendar.Event -> Html Msg
-viewCalEvents cevts = div [ class "calendar-events" ] (List.indexedMap viewCalEvent cevts)
+viewCalEvents : (Maybe EditCalEventContext) -> List Calendar.Event -> Html Msg
+viewCalEvents mectx cevts =
+    let viewOrEdit = case mectx of
+                        Nothing -> viewCalEvent
+                        Just { calEventIndex, editor } ->
+                            (\idx cevt -> case idx == calEventIndex of
+                                True -> viewCalEventEditor idx editor
+                                False -> viewCalEvent idx cevt)
+    in
+        div [ class "calendar-events" ] (List.indexedMap viewOrEdit cevts)
 
 viewCalEvent : Int -> Calendar.Event -> Html Msg
 viewCalEvent idx cevt = div [ class "calendar-event" ]
     [ indicator "indicator-cal-event" "calendar event"
     , Calendar.UI.viewEvent cevt
     , button
-        [ class "calendar-event-btn" ]
+        [ class "calendar-event-btn", onClick (EditCalEvent cevt idx) ]
         [ text "edit" ]
     , button
         [ class "calendar-event-btn", onClick (DeleteCalEvent idx) ]
         [ text "delete" ]
     ]
+
+viewCalEventEditor : Int -> Calendar.EventEditor.Model -> Html Msg
+viewCalEventEditor idx cevt = div [ class "calendar-event" ]
+    [ indicator "indicator-cal-event" "calendar-event"
+    , Calendar.EventEditor.view cevt
+      |> Html.map CalEventEditorMsg
+    , button
+        [ class "calendar-event-btn", onClick (SaveCalEvent) ]
+        [ text "save" ]
+    , button
+        [ class "calendar-event-btn", onClick (CancelCalEvent) ]
+        [ text "cancel" ]
+    ]
+
 
 viewNormalButtonBar : Model -> Html Msg
 viewNormalButtonBar model = div [ class "button-group", class "button-group-content" ]
@@ -210,6 +245,27 @@ update ctx msg model = let data  = model.data
             , []
             )
     (DeleteCalEvent idx, _) -> ( model |> deleteCalEvent idx, Cmd.none, [] )
+    (EditCalEvent cevt idx, _) -> ( model |> editCalEvent cevt idx, Cmd.none, [] )
+
+    (CalEventEditorMsg cemsg, EditCalEventState cectx) ->
+        let (newEditor, cecmd) = Calendar.EventEditor.update cemsg cectx.editor
+        in
+            ( model |> setState (EditCalEventState { cectx | editor = newEditor })
+            , Cmd.map CalEventEditorMsg cecmd
+            , []
+            )
+    (SaveCalEvent, EditCalEventState cectx) ->
+        ( model |> updateCalEvent cectx.calEventIndex (Calendar.EventEditor.getEvent cectx.editor)
+                |> setState NormalState
+        , Cmd.none
+        , []
+        )
+    (CancelCalEvent, EditCalEventState _) ->
+        ( model |> setState NormalState, Cmd.none, [] )
+
+    (CalEventEditorMsg _, _) -> (model, Cmd.none, [])
+    (SaveCalEvent, _) -> (model, Cmd.none, [])
+    (CancelCalEvent, _) -> (model, Cmd.none, [])
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
@@ -220,6 +276,15 @@ setState state cc = { cc | state = state }
 deleteCalEvent : Int -> Model -> Model
 deleteCalEvent idx model = let data = model.data in
     model |> setData { data | calEvents = data.calEvents |> silentDelete idx }
+
+editCalEvent : Calendar.Event -> Int -> Model -> Model
+editCalEvent cevt idx model = let data = model.data in
+    model |> setState (EditCalEventState
+        { calEventIndex = idx, editor = Calendar.EventEditor.init cevt })
+
+updateCalEvent : Int -> Calendar.Event -> Model -> Model
+updateCalEvent idx cevt model = let data = model.data in
+    model |> setData { data | calEvents = silentUpdate idx cevt data.calEvents }
 
 
 beginEdit : Model -> EditContext
@@ -238,10 +303,10 @@ renderer = let default = Markdown.Renderer.defaultHtmlRenderer in
         ]
     }
 
-detectMaths : String -> List (Html Msg) -> List (Html Msg)
-detectMaths content tags = case hasMaths content of
-    True  -> [ renderMaths tags ]
-    False -> tags
+detectMaths : String -> Html Msg -> Html Msg
+detectMaths content tag = case hasMaths content of
+    True  -> renderMaths [ tag ]
+    False -> tag
 
 hasMaths : String -> Bool
 hasMaths s = (String.contains "$" s) || (String.contains "\\(" s) || (String.contains "\\[" s)
@@ -267,3 +332,9 @@ silentDelete idx l = case (idx, l) of
     (0, (_ :: xs)) -> xs
     (_, [])        -> []
     (_, (x :: xs)) -> x :: (silentDelete (idx - 1) xs)
+
+silentUpdate : Int -> a -> List a -> List a
+silentUpdate idx elem l = case (idx, l) of
+    (0, (_ :: xs)) -> elem :: xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentUpdate (idx - 1) elem xs)

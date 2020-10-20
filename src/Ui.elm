@@ -286,12 +286,12 @@ viewSelectedCardBody model path card cardContent = div
 
 viewCardContentDataOnly : CardContent.Data -> Html Msg
 viewCardContentDataOnly cardContent
-    =  CardContent.viewDataOnly CardContent.Deselected cardContent
+    =  CardContent.viewDataOnly cardContent
     |> Html.map ContentMsg
 
 viewCardContent : CardID -> CardContent.Model -> Html Msg
 viewCardContent id cardContent
-    =  CardContent.view CardContent.Selected cardContent
+    =  CardContent.view cardContent
     |> Html.map ContentMsg
 
 
