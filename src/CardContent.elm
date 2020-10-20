@@ -240,7 +240,9 @@ update ctx msg model = let data  = model.data
     (AddCalEventWithTime time, _) ->
         let newEvent = Calendar.defaultEvent ctx.settings.defaultTimezone time
         in
-            ( model |> setData { data | calEvents = newEvent :: data.calEvents }
+            ( model
+                |> setData { data | calEvents = newEvent :: data.calEvents }
+                |> editCalEvent newEvent 0
             , Cmd.none
             , []
             )
