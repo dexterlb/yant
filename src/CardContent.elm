@@ -1,7 +1,7 @@
-module CardContent exposing (view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event)
+module CardContent exposing (ViewMode(..), Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event)
 
-import Html exposing (Html, div, text, button, textarea)
-import Html.Attributes exposing (class, value, placeholder, style, disabled)
+import Html exposing (Html, div, text, button, textarea, span)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, title)
 import Html.Events as HE
 
 import Markdown.Parser as Markdown
@@ -10,13 +10,20 @@ import Markdown.Html
 
 import Json.Encode as JE
 import Json.Decode as JD
+import Json.Decode.Pipeline as JDP
+
+import Time
+import Task
 
 import Calendar
+import Calendar.UI
 import Utils exposing (..)
+import Settings exposing (Settings)
 
 type alias Data =
     { text: String
     , done: Bool
+    , calEvents: List Calendar.Event
     }
 
 type alias Model =
@@ -24,12 +31,22 @@ type alias Model =
     , data: Data
     }
 
+type alias Context =
+    { settings: Settings
+    }
+
 type State
     = NormalState
     | EditState EditContext
 
+type ViewMode
+    = Selected
+    | Deselected
+
 type Msg
     = SetDone Bool
+    | AddCalEvent
+    | AddCalEventWithTime Time.Posix
     | Edit
     | SaveEdit
     | CancelEdit
@@ -54,9 +71,9 @@ emptyModel data =
     , data  = data
     }
 
-view : Model -> Html Msg
-view model = case model.state of
-    NormalState     -> viewNormal model
+view : ViewMode -> Model -> Html Msg
+view mode model = case model.state of
+    NormalState     -> viewNormal mode model
     EditState ectx  -> viewEdit model ectx
 
 viewEdit : Model -> EditContext -> Html Msg
@@ -69,13 +86,16 @@ viewEdit model ectx = div
         ] []
     ]
 
-viewNormal : Model -> Html Msg
-viewNormal model = viewDataOnly model.data
+viewNormal : ViewMode -> Model -> Html Msg
+viewNormal mode model = viewDataOnly mode model.data
 
-viewDataOnly : Data -> Html Msg
-viewDataOnly data = div
+viewDataOnly : ViewMode -> Data -> Html Msg
+viewDataOnly mode data = div
     [ class "card-content" ]
-    (( [ case data.text
+    (
+    [ viewIndicators mode data
+    ] ++
+    ( [ case data.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
             |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
@@ -87,29 +107,64 @@ viewDataOnly data = div
                 div [ class "markdown-errors" ] [ text errors ]
 
     ] |> detectMaths data.text ) ++
-    [
+    [ case mode of
+        Selected   -> viewCalEvents data.calEvents
+        Deselected -> text "" -- fixme
     ])
+
+viewIndicators : ViewMode -> Data -> Html Msg
+viewIndicators mode data = let indicatorElements = viewIndicatorElements mode data
+    in case (mode, indicatorElements) of
+        (_, [])       -> text "" -- fixme
+        (Selected, _) -> text ""
+        _             -> div [ class "indicators" ] indicatorElements
+
+viewIndicatorElements : ViewMode -> Data -> List (Html Msg)
+viewIndicatorElements _ data = case data.calEvents of
+    [] -> []
+    _  -> [ indicator "indicator-cal-event" "item has a calendar event" ]
+
+indicator : String -> String -> Html Msg
+indicator className textContent =
+    div
+        [ class "indicator", class className, title textContent ]
+        [ span [ class "sr-only" ] [ text textContent ] ]
 
 buttons : Model -> Html Msg
 buttons model = case model.state of
     NormalState -> viewNormalButtonBar model
     EditState _ -> viewEditButtonBar model
 
-event : Event -> Model -> (Model, Actions)
-event evt model = case (evt, model.state) of
-    (Destroy, EditState _) -> update SaveEdit model
-    (Destroy, _) -> (model, [])
+event : Context -> Event -> Model -> (Model, Cmd Msg, Actions)
+event ctx evt model = case (evt, model.state) of
+    (Destroy, EditState _) -> update ctx SaveEdit model
+    (Destroy, _) -> (model, Cmd.none, [])
     (BeginEdit, EditState _) ->
-        let (model1, actions1) = update SaveEdit model
-        in let (model2, actions2) = update Edit model
-        in (model2, actions1 ++ actions2)
-    (BeginEdit, _) -> update Edit model
+        let (model1, cmd1, actions1) = update ctx SaveEdit model
+        in let (model2, cmd2, actions2) = update ctx Edit model
+        in (model2, Cmd.batch [ cmd1, cmd2 ], actions1 ++ actions2)
+    (BeginEdit, _) -> update ctx Edit model
+
+viewCalEvents : List Calendar.Event -> Html Msg
+viewCalEvents cevts = div [ class "calendar-events" ] (List.map viewCalEvent cevts)
+
+viewCalEvent : Calendar.Event -> Html Msg
+viewCalEvent cevt = div [ class "calendar-event" ]
+    [ indicator "indicator-cal-event" "calendar event"
+    , Calendar.UI.viewEvent cevt
+    , button
+        [ class "calendar-event-btn" ]
+        [ text "edit" ]
+    ]
 
 viewNormalButtonBar : Model -> Html Msg
 viewNormalButtonBar model = div [ class "button-group", class "button-group-content" ]
     [ button
         [ onClick Edit ]
         [ text "edit" ]
+    , button
+        [ onClick AddCalEvent ]
+        [ text "add event" ]
     , case model.data.done of
         True -> button
             [ onClick <| SetDone False]
@@ -129,18 +184,26 @@ viewEditButtonBar model = div [ class "button-group", class "button-group-conten
         [ text "cancel" ]
     ]
 
-update : Msg -> Model -> (Model, Actions)
-update msg model = let data  = model.data
+update : Context -> Msg -> Model -> (Model, Cmd Msg, Actions)
+update ctx msg model = let data  = model.data
                    in case (msg, model.state) of
-    (SetDone done, _)          -> (model |> setData  { data  | done = done }, [])
-    (Edit,         _)          -> (model |> setState (EditState (beginEdit model)), [])
-    (CancelEdit,   _)          -> (model |> setState NormalState, [])
+    (SetDone done, _)          -> (model |> setData  { data  | done = done }, Cmd.none, [])
+    (Edit,         _)          -> (model |> setState (EditState (beginEdit model)), Cmd.none, [])
+    (CancelEdit,   _)          -> (model |> setState NormalState, Cmd.none, [])
     (SaveEdit, EditState ectx) -> (model |> setData  { data  | text = ectx.text }
-                                         |> setState NormalState, [])
-    (SaveEdit, _)              -> (model |> setState NormalState, [])
+                                         |> setState NormalState, Cmd.none, [])
+    (SaveEdit, _)              -> (model |> setState NormalState, Cmd.none, [])
     (TextChanged newText, EditState ectx) ->
-        ( model |> setState (EditState { ectx | text = newText }), [] )
-    (TextChanged _, _) -> ( model, [] )
+        ( model |> setState (EditState { ectx | text = newText }), Cmd.none, [] )
+    (TextChanged _, _) -> ( model, Cmd.none, [] )
+    (AddCalEvent, _) -> ( model, Task.perform AddCalEventWithTime Time.now, [] )
+    (AddCalEventWithTime time, _) ->
+        let newEvent = Calendar.defaultEvent ctx.settings.defaultTimezone time
+        in
+            ( model |> setData { data | calEvents = newEvent :: data.calEvents }
+            , Cmd.none
+            , []
+            )
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
@@ -177,12 +240,14 @@ renderMaths : List (Html Msg) -> Html Msg
 renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children
 
 decode : JD.Decoder Data
-decode = JD.map2 Data
-    (JD.field "text" JD.string)
-    (JD.field "done" JD.bool)
+decode = JD.succeed Data
+    |> JDP.required "text" JD.string
+    |> JDP.optional "done" JD.bool False
+    |> JDP.optional "cal_events" (JD.list Calendar.decodeEvent) []
 
 encode : Data -> JD.Value
 encode content = JE.object
     [ ("text",     JE.string content.text)
     , ("done",     JE.bool   content.done)
+    , ("cal_events", JE.list Calendar.encodeEvent content.calEvents)
     ]

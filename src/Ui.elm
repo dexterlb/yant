@@ -18,7 +18,6 @@ import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
 import Utils as Utils exposing (onClick)
 import CardContent as CardContent
-import Calendar
 import Settings as Settings exposing (Settings)
 
 
@@ -106,16 +105,16 @@ init rootCard =
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = case msg of
     SelectCard path  ->
-        let (model1, actions1) = selectedCardEvent CardContent.Destroy model
+        let (model1, cmd, actions1) = selectedCardEvent CardContent.Destroy model
         in let model2 = { model1 | selectedCard = Just (CardContent.emptyModel (fetch (NE.head path) model.cards).content, path) }
         in
-            ( model2, Cmd.none, actions1 )
+            ( model2, cmd, actions1 )
     DeselectCard     ->
-        let (model1, actions1) = selectedCardEvent CardContent.Destroy model
+        let (model1, cmd, actions1) = selectedCardEvent CardContent.Destroy model
         in let model2 = { model1 | selectedCard = Nothing }
         in
-            ( model2, Cmd.none, actions1 )
-    
+            ( model2, cmd, actions1 )
+
     UnlinkCard path -> case NE.tail path |> List.head of
         Nothing ->
             ( setError UnlinkWithoutParent model, Cmd.none, [] )
@@ -159,9 +158,8 @@ update msg model = case msg of
         case model.selectedCard of
             Nothing -> ( model, Cmd.none, [] )
             Just (content, path) ->
-                CardContent.update contentMsg content
+                CardContent.update (cardContentContext model) contentMsg content
                     |> processContentResult model path
-                    |> emptyCmd
 
     NotImplementedMsg ->
        ( setError NotImplemented model, Cmd.none, [] )
@@ -181,21 +179,18 @@ insertChildWithID ins id model =
         , newPath
         , (saveCard (NE.head parentPath) model2.cards) ++ actions1 )
 
-emptyCmd : (a, b) -> (a, Cmd msg, b)
-emptyCmd (x, y) = (x, Cmd.none, y)
-
 setClipboard : Maybe Clipboard -> Model -> Model
 setClipboard clip model = { model | clipboard = clip }
 
-selectedCardEvent : CardContent.Event -> Model -> (Model, Actions)
+selectedCardEvent : CardContent.Event -> Model -> (Model, Cmd Msg, Actions)
 selectedCardEvent evt model = case model.selectedCard of
-    Nothing -> (model, [])
+    Nothing -> (model, Cmd.none, [])
     Just (contentModel, path) ->
-        CardContent.event evt contentModel
+        CardContent.event (cardContentContext model) evt contentModel
             |> processContentResult model path
 
-processContentResult : Model -> CardPath -> (CardContent.Model, CardContent.Actions) -> (Model, Actions)
-processContentResult model path (content, cactions) =
+processContentResult : Model -> CardPath -> (CardContent.Model, Cmd CardContent.Msg, CardContent.Actions) -> (Model, Cmd Msg, Actions)
+processContentResult model path (content, ccmd, cactions) =
     let
         card = fetch (NE.head path) model.cards
         model1 = { model | selectedCard = Just (content, path) }
@@ -206,7 +201,7 @@ processContentResult model path (content, cactions) =
                      in (model11, saveCard (NE.head path) model11.cards)
     in let
         (model3, actions3) = processContentActions cactions model2
-    in (model3, actions1 ++ actions3)
+    in (model3, Cmd.map ContentMsg ccmd, actions1 ++ actions3)
 
 
 processContentActions : CardContent.Actions -> Model -> (Model, Actions)
@@ -220,6 +215,9 @@ processContentAction : CardContent.Action -> Model -> (Model, Actions)
 processContentAction ca model = case ca of
     CardContent.Dunno -> Debug.todo "implement me"
 
+cardContentContext : Model -> CardContent.Context
+cardContentContext model = { settings = model.settings }
+
 pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
 pushMsg inMsg model = case inMsg of
     GotCard card ->
@@ -227,10 +225,10 @@ pushMsg inMsg model = case inMsg of
         in
             case model1.state of
                 PendingEdit path -> case (NE.head path) == card.id of
-                    True -> let ( model3, cmd, actions3) = update (SelectCard path) model1
+                    True -> let ( model3, cmd3, actions3) = update (SelectCard path) model1
                             in let
-                                ( model4, actions4 ) = selectedCardEvent CardContent.BeginEdit model3
-                            in (model4, cmd, actions4)
+                                ( model4, cmd4, actions4 ) = selectedCardEvent CardContent.BeginEdit model3
+                            in (model4, Cmd.batch [ cmd3, cmd4 ], actions4)
                     False -> (model1, Cmd.none, [])
                 _ -> (model1, Cmd.none, [])
 
@@ -288,12 +286,12 @@ viewSelectedCardBody model path card cardContent = div
 
 viewCardContentDataOnly : CardContent.Data -> Html Msg
 viewCardContentDataOnly cardContent
-    =  CardContent.viewDataOnly cardContent
+    =  CardContent.viewDataOnly CardContent.Deselected cardContent
     |> Html.map ContentMsg
 
 viewCardContent : CardID -> CardContent.Model -> Html Msg
 viewCardContent id cardContent
-    =  CardContent.view cardContent
+    =  CardContent.view CardContent.Selected cardContent
     |> Html.map ContentMsg
 
 

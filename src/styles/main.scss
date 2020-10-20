@@ -23,6 +23,8 @@ body {
 pre, code {
     font-family: 'Droid Sans Mono', monospace;
     font-size: 11pt;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 .main-menu {
@@ -61,6 +63,55 @@ pre, code {
 
     .button-group-content {
         button {
+            background-color: rgba(200, 50, 10, 0.3);
+
+            &:hover {
+                background-color: rgba(200, 50, 10, 0.5);
+            }
+        }
+    }
+}
+
+.indicator {
+    &.indicator-cal-event {
+        &::before {
+            content: '🗓️';
+        }
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+}
+
+.indicators {
+    float: right;
+    margin-top: 0.2em;
+    margin-right: 0.2em;
+}
+
+.calendar-events {
+    display: flex;
+    flex-direction: column;
+
+    .calendar-event {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin-left: 1em;
+        margin-right: 1em;
+
+        .event-content {
+            flex-shrink: 3;
+            margin-left: 1em;
+            margin-right: 1em;
+        }
+
+        button {
+            margin: 0.2em;
+
+            border: none;
+            outline: none;
+
             background-color: rgba(200, 50, 10, 0.3);
 
             &:hover {
