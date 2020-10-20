@@ -52,6 +52,8 @@ type Msg
     | CancelEdit
     | TextChanged String
 
+    | DeleteCalEvent Int
+
 type Event
     = Destroy
     | BeginEdit
@@ -146,15 +148,18 @@ event ctx evt model = case (evt, model.state) of
     (BeginEdit, _) -> update ctx Edit model
 
 viewCalEvents : List Calendar.Event -> Html Msg
-viewCalEvents cevts = div [ class "calendar-events" ] (List.map viewCalEvent cevts)
+viewCalEvents cevts = div [ class "calendar-events" ] (List.indexedMap viewCalEvent cevts)
 
-viewCalEvent : Calendar.Event -> Html Msg
-viewCalEvent cevt = div [ class "calendar-event" ]
+viewCalEvent : Int -> Calendar.Event -> Html Msg
+viewCalEvent idx cevt = div [ class "calendar-event" ]
     [ indicator "indicator-cal-event" "calendar event"
     , Calendar.UI.viewEvent cevt
     , button
         [ class "calendar-event-btn" ]
         [ text "edit" ]
+    , button
+        [ class "calendar-event-btn", onClick (DeleteCalEvent idx) ]
+        [ text "delete" ]
     ]
 
 viewNormalButtonBar : Model -> Html Msg
@@ -204,12 +209,17 @@ update ctx msg model = let data  = model.data
             , Cmd.none
             , []
             )
+    (DeleteCalEvent idx, _) -> ( model |> deleteCalEvent idx, Cmd.none, [] )
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
 
 setState : State -> Model -> Model
 setState state cc = { cc | state = state }
+
+deleteCalEvent : Int -> Model -> Model
+deleteCalEvent idx model = let data = model.data in
+    model |> setData { data | calEvents = data.calEvents |> silentDelete idx }
 
 
 beginEdit : Model -> EditContext
@@ -251,3 +261,9 @@ encode content = JE.object
     , ("done",     JE.bool   content.done)
     , ("cal_events", JE.list Calendar.encodeEvent content.calEvents)
     ]
+
+silentDelete : Int -> List a -> List a
+silentDelete idx l = case (idx, l) of
+    (0, (_ :: xs)) -> xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentDelete (idx - 1) xs)
