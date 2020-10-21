@@ -1,6 +1,6 @@
 module Settings exposing (..)
 
-import Timezones as Timezones exposing (Timezone)
+import Calendar.Timezones as Timezones exposing (Timezone)
 
 type alias Settings =
     { defaultTimezone : Timezone

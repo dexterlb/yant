@@ -2,7 +2,7 @@ module Calendar exposing (..)
 
 import Time
 import Time.Extra
-import Timezones as Timezones exposing (Timezone)
+import Calendar.Timezones as Timezones exposing (Timezone)
 
 import Utils exposing (..)
 

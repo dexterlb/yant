@@ -9,7 +9,7 @@ import Json.Encode as JE
 import Calendar.DateTimeFormats exposing (..)
 import Calendar exposing (..)
 
-import Timezones exposing (Timezone)
+import Calendar.Timezones as Timezones exposing (Timezone)
 
 type alias Model =
     { event: Event

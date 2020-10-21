@@ -1,7 +1,7 @@
 module TestCalendar exposing (..)
 
 import Calendar exposing (..)
-import Timezones
+import Calendar.Timezones as Timezones
 
 import Time exposing (..)
 import Random

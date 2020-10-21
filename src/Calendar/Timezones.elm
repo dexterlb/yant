@@ -1,6 +1,6 @@
-module Timezones exposing ( Timezone, all, encode, decode
-                          , toString, fromString, timezoneOf
-                          , default)
+module Calendar.Timezones exposing ( Timezone, all, encode, decode
+                                   , toString, fromString, timezoneOf
+                                   , default)
 
 import Time
 import TimeZone
