@@ -1,11 +1,12 @@
 module Calendar.Timezones exposing ( Timezone, all, encode, decode
                                    , toString, fromString, timezoneOf
-                                   , default)
+                                   , default, continentOf, grouped)
 
 import Time
 import TimeZone
 
 import Dict
+import Dict.Extra
 import Utils exposing (..)
 
 import Json.Encode as JE
@@ -40,3 +41,11 @@ fromString name = Dict.get name TimeZone.zones
 
 timezoneOf : Timezone -> Time.Zone
 timezoneOf (Timezone _ tz) = tz ()
+
+continentOf : Timezone -> String
+continentOf tz = tz |> toString |> String.split "/" |> List.head |> Maybe.withDefault "Etc"
+
+grouped : List Timezone -> List (String, List Timezone)
+grouped tzs =
+  Dict.Extra.groupBy continentOf tzs
+  |> Dict.toList

@@ -1,7 +1,7 @@
 module Calendar.EventEditor exposing (Model, Msg, init, update, view, getEvent)
 
-import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, step, required, selected)
+import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option, optgroup)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, step, required, selected, attribute)
 import Html.Events as HE
 
 import Json.Encode as JE
@@ -58,7 +58,13 @@ viewTZPicker tz f =
             Just newTz -> Evil (f newTz)
             Nothing    -> Evil (f tz))
         ]
-        (List.map (tzOption tz) Timezones.all)
+        (List.map (tzOptionGroup tz) (Timezones.grouped Timezones.all))
+
+tzOptionGroup : Timezone -> (String, List Timezone) -> Html Msg
+tzOptionGroup selectedTZ (groupName, tzs) =
+    optgroup
+        [ attribute "label" groupName ]
+        (List.map (tzOption selectedTZ) tzs)
 
 tzOption : Timezone -> Timezone -> Html Msg
 tzOption selectedTZ tz = let tzn = Timezones.toString tz in
