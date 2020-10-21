@@ -1,6 +1,6 @@
 module Utils exposing ( hash, hash01, catMaybes, notEmpty
                       , decodeOptional, decodeOptionalList, decodeOrFail
-                      , onClick )
+                      , onClick, checkbox )
 
 
 import Bitwise
@@ -12,8 +12,9 @@ import Json.Decode exposing (Decoder)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
 
-import Html
+import Html exposing (Html)
 import Html.Events as HE
+import Html.Attributes as HA
 
 -- hashing utils
 
@@ -68,3 +69,13 @@ decodeOrFail msg d = d |> JD.andThen (\m -> case m of
 
 onClick : msg -> Html.Attribute msg
 onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))
+
+checkbox : List (Html.Attribute msg) -> List (Html msg) -> Html msg
+checkbox attrs labelElements = Html.span []
+    [ Html.input
+      ( (HA.type_ "checkbox") :: attrs )
+      []
+    , Html.label
+      []
+      labelElements
+    ]

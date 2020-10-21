@@ -28,7 +28,7 @@ getEvent { event } = event
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-    Evil f -> (f model, Cmd.none)
+    Evil f -> (fixup (f model), Cmd.none)
 
 view : Model -> Html Msg
 view model = let event = model.event in div
@@ -57,8 +57,23 @@ view model = let event = model.event in div
                     , viewDTPicker end (\dt m -> { m | event = { event | end = Just dt } })
                     ]
             ]
+        , div
+            [ class "dtp-group" ]
+            [ checkbox 
+                [ checked event.allDay 
+                , onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
+                ] 
+                [ text "all day" ]
+            ]
         ]
     ]
+
+fixup : Model -> Model
+fixup model = let event = model.event in model
+    |> (\m -> case m.event.allDay of
+            True -> { m | event = { event | start = setTime (0, 0, 0) event.start 
+                                          , end = Maybe.map (setTime (23, 59, 59)) event.end } }
+            False -> m)
 
 viewDTPicker : DateTime -> (DateTime -> Model -> Model) -> Html Msg
 viewDTPicker dt f = div
@@ -93,3 +108,6 @@ tzOption selectedTZ tz = let tzn = Timezones.toString tz in
     case tzn == Timezones.toString selectedTZ of
         True  -> option [ value tzn, selected True  ] [ text tzn ]
         False -> option [ value tzn, selected False ] [ text tzn ]
+
+setTime : (Int, Int, Int) -> DateTime -> DateTime
+setTime (h, m, s) dt = { dt | hour = h, minute = m, second = s }
