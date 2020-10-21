@@ -64,6 +64,11 @@ view model = let event = model.event in div
                 , onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
                 ] 
                 [ text "all day" ]
+            , checkbox 
+                [ checked event.busy 
+                , onClick (Evil (\m -> { m | event = { event | busy = not event.busy } } ) )
+                ] 
+                [ text "treat as busy" ]
             ]
         ]
     ]
