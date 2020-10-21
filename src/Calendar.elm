@@ -25,9 +25,13 @@ type alias Event =
     , allDay : Bool
     , repeat : Maybe Repeat
     , busy   : Bool         -- treat the human associated with the event as busy
-    , task   : Bool         -- treat the event as a to-do item
+    , kind   : Kind         -- treat the event as a to-do item
     , reminders : List Reminder
     }
+
+type Kind
+    = CalendarEvent
+    | Task
 
 type alias Repeat =
     { freq      : Freq
@@ -113,12 +117,12 @@ type alias SignedDuration = Int
 
 defaultEvent : Timezone -> Time.Posix -> Event
 defaultEvent tz time = let dt = dateTimeFromTime tz time in
-    { start = dt
-    , end   = Nothing
-    , allDay = False
-    , repeat = Nothing
-    , busy   = False
-    , task   = False
+    { start     = dt
+    , end       = Nothing
+    , allDay    = False
+    , repeat    = Nothing
+    , busy      = False
+    , kind      = CalendarEvent
     , reminders = []
     }
 
@@ -131,7 +135,7 @@ encodeEvent data = JE.object <| catMaybes
     , Just ( "allDay", JE.bool data.allDay )
     , Maybe.map ( \repeat -> ( "repeating", encodeRepeat repeat) ) data.repeat
     , Just ( "busy", JE.bool data.busy )
-    , Just ( "isTask", JE.bool data.task )
+    , Just ( "kind", encodeKind data.kind )
     , Just ( "alarms", JE.list encodeReminder data.reminders )
     ]
 
@@ -142,7 +146,7 @@ decodeEvent = JD.succeed Event
     |> JDP.optional   "allDay" JD.bool False
     |> decodeOptional "repeating" decodeRepeat
     |> JDP.optional   "busy"   JD.bool False
-    |> JDP.required   "isTask" JD.bool
+    |> JDP.optional   "kind"   decodeKind CalendarEvent
     |> JDP.optional   "alarms" (JD.list decodeReminder) []
 
 encodeRepeat : Repeat -> JE.Value
@@ -281,6 +285,14 @@ decodeNoisiness = JD.string
     |> JD.map noisinessFromString
     |> decodeOrFail "not a valid noisiness"
 
+encodeKind : Kind -> JE.Value
+encodeKind n = JE.string (kindToString n)
+
+decodeKind : Decoder Kind
+decodeKind = JD.string
+    |> JD.map kindFromString
+    |> decodeOrFail "not a valid kind"
+
 
 freqToString : Freq -> String
 freqToString freq = case freq of
@@ -376,3 +388,14 @@ noisinessFromString s = case s of
     "audio"   -> Just Noisy
     "display" -> Just Silent
     _         -> Nothing
+
+kindToString : Kind -> String
+kindToString k = case k of
+    CalendarEvent  -> "calendar_event"
+    Task           -> "task"
+
+kindFromString : String -> Maybe Kind
+kindFromString s = case s of
+    "calendar_event"   -> Just CalendarEvent
+    "task"             -> Just Task
+    _                  -> Nothing

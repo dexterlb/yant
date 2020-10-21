@@ -37,7 +37,7 @@ view model = let event = model.event in div
         [ class "start-end" ]
         [ div
             [ class "dtp-group" ]
-            [ label [] [ text "start: " ]
+            [ label [] [ text "at: " ]
             , viewDTPicker event.start (\dt m -> { m | event = { event | start = dt } })
             ]
         , div

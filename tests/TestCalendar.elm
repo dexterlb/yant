@@ -26,7 +26,7 @@ fuzzEvent = Fuzz.constant Event
     |> fuzzField   "allDay" Fuzz.bool
     |> fuzzOptional "repeating" fuzzRepeat
     |> fuzzField   "busy"   Fuzz.bool
-    |> fuzzField   "isTask" Fuzz.bool
+    |> fuzzField   "kind" fuzzKind
     |> fuzzField   "alarms" (Fuzz.list fuzzReminder)
 
 fuzzDateTime : Fuzzer DateTime
@@ -64,6 +64,9 @@ fuzzFilterSet = Fuzz.constant FilterSet
 
 fuzzNoisiness : Fuzzer Noisiness
 fuzzNoisiness = fuzzAny [Noisy, Silent]
+
+fuzzKind : Fuzzer Kind
+fuzzKind = fuzzAny [CalendarEvent, Task]
 
 fuzzWeekday : Fuzzer Calendar.Weekday
 fuzzWeekday = fuzzAny [ Mon , Tue , Wed , Thu , Fri , Sat , Sun ]
