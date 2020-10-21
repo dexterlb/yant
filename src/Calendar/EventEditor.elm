@@ -1,6 +1,6 @@
 module Calendar.EventEditor exposing (Model, Msg, init, update, view, getEvent)
 
-import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option, optgroup)
+import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option, optgroup, span)
 import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, step, required, selected, attribute)
 import Html.Events as HE
 
@@ -10,6 +10,8 @@ import Calendar.DateTimeFormats exposing (..)
 import Calendar exposing (..)
 
 import Calendar.Timezones as Timezones exposing (Timezone)
+
+import Utils exposing (..)
 
 type alias Model =
     { event: Event
@@ -33,8 +35,28 @@ view model = let event = model.event in div
     [ class "cal-event-editor" ]
     [ div
         [ class "start-end" ]
-        [ label [] [ text "start: " ]
-        , viewDTPicker event.start (\dt m -> { m | event = { event | start = dt } })
+        [ div
+            [ class "dtp-group" ]
+            [ label [] [ text "start: " ]
+            , viewDTPicker event.start (\dt m -> { m | event = { event | start = dt } })
+            ]
+        , div
+            [ class "dtp-group" ]
+            [ label [] [ text "end: " ]
+            , case event.end of
+                Nothing ->
+                    input
+                        [ type_ "checkbox", checked False
+                        , onClick (Evil (\m -> { m | event = { event | end = Just event.start } })) 
+                        ] []
+                Just end -> span []
+                    [ input 
+                        [ type_ "checkbox", checked True
+                        , onClick (Evil (\m -> { m | event = { event | end = Nothing } })) 
+                        ] []
+                    , viewDTPicker end (\dt m -> { m | event = { event | end = Just dt } })
+                    ]
+            ]
         ]
     ]
 
