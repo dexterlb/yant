@@ -5,6 +5,10 @@ body {
     font-size: 11pt;
 }
 
+input[type="time"]::-webkit-clear-button {
+    display: none;
+}
+
 .error-box {
     position: absolute;
     top: 0;
