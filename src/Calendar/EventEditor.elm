@@ -45,14 +45,15 @@ view model = let event = model.event in div
             [ label [] [ text "end: " ]
             , case event.end of
                 Nothing ->
-                    input
-                        [ type_ "checkbox", checked False
-                        , onClick (Evil (\m -> { m | event = { event | end = Just event.start } })) 
-                        ] []
+                    checkbox
+                        [ checked False
+                        , HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start } }))
+                        ] 
+                        []
                 Just end -> span []
-                    [ input 
-                        [ type_ "checkbox", checked True
-                        , onClick (Evil (\m -> { m | event = { event | end = Nothing } })) 
+                    [ checkbox
+                        [ checked True
+                        , HE.onClick (Evil (\m -> { m | event = { event | end = Nothing } }))
                         ] []
                     , viewDTPicker end (\dt m -> { m | event = { event | end = Just dt } })
                     ]
