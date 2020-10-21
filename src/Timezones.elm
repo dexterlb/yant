@@ -13,15 +13,15 @@ import Json.Decode exposing (Decoder)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
 
-type Timezone = Timezone String Time.Zone
+type Timezone = Timezone String (() -> Time.Zone)
 
 default : Timezone
-default = Timezone "Europe/Sofia" (TimeZone.europe__sofia ())
+default = Timezone "Europe/Sofia" TimeZone.europe__sofia
 
 all : List Timezone
 all = TimeZone.zones
     |> Dict.toList
-    |> List.map (\(name, f) -> Timezone name (f ()))
+    |> List.map (\(name, f) -> Timezone name f)
 
 encode : Timezone -> JE.Value
 encode tz = JE.string (toString tz)
@@ -36,7 +36,7 @@ toString (Timezone name _) = name
 
 fromString : String -> Maybe Timezone
 fromString name = Dict.get name TimeZone.zones
-    |> Maybe.map (\f -> Timezone name (f ()))
+    |> Maybe.map (\f -> Timezone name f)
 
 timezoneOf : Timezone -> Time.Zone
-timezoneOf (Timezone _ tz) = tz
+timezoneOf (Timezone _ tz) = tz ()
