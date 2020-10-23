@@ -122,7 +122,7 @@ defaultEvent tz time = let dt = dateTimeFromTime tz time in
     , allDay    = False
     , repeat    = Nothing
     , busy      = False
-    , kind      = CalendarEvent
+    , kind      = Task
     , reminders = []
     }
 
@@ -393,6 +393,11 @@ kindToString : Kind -> String
 kindToString k = case k of
     CalendarEvent  -> "calendar_event"
     Task           -> "task"
+
+kindName : Kind -> String
+kindName k = case k of
+    CalendarEvent  -> "Calendar event"
+    Task           -> "Task"
 
 kindFromString : String -> Maybe Kind
 kindFromString s = case s of

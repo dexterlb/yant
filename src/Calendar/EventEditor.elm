@@ -47,13 +47,13 @@ view model = let event = model.event in div
                 Nothing ->
                     checkbox
                         [ checked False
-                        , HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start } }))
+                        , HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start, kind = CalendarEvent } }))
                         ] 
                         []
                 Just end -> span []
                     [ checkbox
                         [ checked True
-                        , HE.onClick (Evil (\m -> { m | event = { event | end = Nothing } }))
+                        , HE.onClick (Evil (\m -> { m | event = { event | end = Nothing, kind = Task } }))
                         ] []
                     , viewDTPicker end (\dt m -> { m | event = { event | end = Just dt } })
                     ]
@@ -70,6 +70,10 @@ view model = let event = model.event in div
                 , onClick (Evil (\m -> { m | event = { event | busy = not event.busy } } ) )
                 ] 
                 [ text "treat as busy" ]
+            , select
+                [ HE.onInput (\k -> (Evil (\m -> { m | event = { event | kind = parseKind k event.kind } } ) ) )
+                ]
+                (List.map (kindOption model.event.kind) [ Task, CalendarEvent ])
             ]
         ]
     ]
@@ -114,6 +118,12 @@ tzOption selectedTZ tz = let tzn = Timezones.toString tz in
     case tzn == Timezones.toString selectedTZ of
         True  -> option [ value tzn, selected True  ] [ text tzn ]
         False -> option [ value tzn, selected False ] [ text tzn ]
+
+parseKind : String -> Kind -> Kind
+parseKind s k = Maybe.withDefault k (kindFromString s)
+
+kindOption : Kind -> Kind -> Html Msg
+kindOption selectedK k = option [ value (kindToString k), selected (k == selectedK) ] [ text (kindName k) ]
 
 setTime : (Int, Int, Int) -> DateTime -> DateTime
 setTime (h, m, s) dt = { dt | hour = h, minute = m, second = s }
