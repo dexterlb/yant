@@ -103,6 +103,8 @@ viewReminderEditor : Model -> Int -> Reminder-> Html Msg
 viewReminderEditor model index rem = let event = model.event in div [ class "reminder-editor" ]
     [ indicator "indicator-reminder" "reminder"
     , viewSignedDurationPicker rem.trigger (\dur m -> setReminder m index { rem | trigger = dur })
+    , viewReminderRepeatPicker rem.repeat  (\rep m -> setReminder m index { rem | repeat  = rep })
+    , viewNoisinessPicker      rem.noisiness (\n m -> setReminder m index { rem | noisiness = n })
     , button
         [ class "calendar-event-btn"
         , class "add-reminder-btn"
@@ -113,6 +115,14 @@ viewReminderEditor model index rem = let event = model.event in div [ class "rem
 setReminder : Model -> Int -> Reminder -> Model
 setReminder model index rem = let event = model.event in 
     { model | event = { event | reminders = silentUpdate index rem event.reminders } }
+
+viewReminderRepeatPicker : ReminderRepeat -> (ReminderRepeat -> Model -> Model) -> Html Msg
+viewReminderRepeatPicker rr f = div [ class "reminder-repeat-picker" ]
+    [ text "repeat picker goes here" ]
+
+viewNoisinessPicker : Noisiness -> (Noisiness -> Model -> Model) -> Html Msg
+viewNoisinessPicker rr f = div [ class "noisiness-picker" ]
+    [ text "noisiness picker goes here" ]
 
 viewSignedDurationPicker : SignedDuration -> (SignedDuration -> Model -> Model) -> Html Msg
 viewSignedDurationPicker dur f = div
