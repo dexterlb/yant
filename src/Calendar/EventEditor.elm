@@ -48,7 +48,7 @@ view model = let event = model.event in div
                     checkbox
                         [ checked False
                         , HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start, kind = CalendarEvent } }))
-                        ] 
+                        ]
                         []
                 Just end -> span []
                     [ checkbox
@@ -60,20 +60,34 @@ view model = let event = model.event in div
             ]
         , div
             [ class "dtp-group" ]
-            [ checkbox 
-                [ checked event.allDay 
+            [ checkbox
+                [ checked event.allDay
                 , onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
-                ] 
+                ]
                 [ text "all day" ]
-            , checkbox 
-                [ checked event.busy 
+            , checkbox
+                [ checked event.busy
                 , onClick (Evil (\m -> { m | event = { event | busy = not event.busy } } ) )
-                ] 
+                ]
                 [ text "treat as busy" ]
             , select
                 [ HE.onInput (\k -> (Evil (\m -> { m | event = { event | kind = parseKind k event.kind } } ) ) )
                 ]
                 (List.map (kindOption model.event.kind) [ Task, CalendarEvent ])
+            ]
+        , div
+            [ class "dtp-group" ]
+            [ checkbox
+                [ checked (event.repeat /= Nothing)
+                , onClick (Evil (\m -> { m | event = { event | repeat =
+                    case event.repeat of
+                        Nothing -> Just defaultRepeat
+                        Just _  -> Nothing } } ) )
+                ]
+                [ text "repeat" ]
+            , case event.repeat of
+                Nothing  -> text ""
+                Just rep -> viewRepeatEditor rep (\r m -> { m | event = { event | repeat = Just r } })
             ]
         , div
             [ class "reminder-list" ]
@@ -91,9 +105,13 @@ view model = let event = model.event in div
 fixup : Model -> Model
 fixup model = let event = model.event in model
     |> (\m -> case m.event.allDay of
-            True -> { m | event = { event | start = setTime (0, 0, 0) event.start 
+            True -> { m | event = { event | start = setTime (0, 0, 0) event.start
                                           , end = Maybe.map (setTime (23, 59, 59)) event.end } }
             False -> m)
+
+viewRepeatEditor : Repeat -> (Repeat -> Model -> Model) -> Html Msg
+viewRepeatEditor rep f = div [ class "repeat-editor" ]
+    [ text "repeat editor goes here" ]
 
 viewReminderEditors : Model -> Html Msg
 viewReminderEditors model = div [ class "reminder-editors" ]
@@ -113,7 +131,7 @@ viewReminderEditor model index rem = let event = model.event in div [ class "rem
     ]
 
 setReminder : Model -> Int -> Reminder -> Model
-setReminder model index rem = let event = model.event in 
+setReminder model index rem = let event = model.event in
     { model | event = { event | reminders = silentUpdate index rem event.reminders } }
 
 viewReminderRepeatPicker : ReminderRepeat -> (ReminderRepeat -> Model -> Model) -> Html Msg
@@ -141,7 +159,7 @@ viewReminderRepeatPicker rr f = div [ class "reminder-repeat-picker" ]
 
 viewNoisinessPicker : Noisiness -> (Noisiness -> Model -> Model) -> Html Msg
 viewNoisinessPicker n f = select
-    [ class "noisiness-picker" 
+    [ class "noisiness-picker"
     , HE.onInput (\ns -> Evil (f (case ns of
         "noisy"  -> Noisy
         "silent" -> Silent
@@ -176,7 +194,7 @@ viewSignedDurationPicker dur f = div
 viewDurationPicker : Duration -> (Duration -> Model -> Model) -> Html Msg
 viewDurationPicker dur f = div
     [ class "duration-picker" ]
-    
+
     [ viewDurationMultiplePicker 86400     0  dur f, text "days"
     , viewDurationMultiplePicker 3600      24 dur f, text "hr"
     , viewDurationMultiplePicker 60        60 dur f, text "min"
@@ -187,7 +205,7 @@ viewDurationMultiplePicker : Int -> Int -> Duration -> (Duration -> Model -> Mod
 viewDurationMultiplePicker quot rem dur f =
     let current = case rem of
                     0 ->            dur // quot
-                    _ -> modBy rem (dur // quot) 
+                    _ -> modBy rem (dur // quot)
     in input
         [ class "duration-multiple", type_ "number"
         , value (String.fromInt current)

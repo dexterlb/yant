@@ -133,6 +133,25 @@ defaultReminder =
     , repeat = NoRepeat
     }
 
+defaultRepeat : Repeat
+defaultRepeat =
+    { freq = Daily
+    , interval = 1
+    , filterSet = emptyFilterSet
+    , wkst = Monday
+    }
+
+emptyFilterSet : FilterSet
+emptyFilterSet =
+    { weekdays = []
+    , monthdays = []
+    , months = []
+    , exclude = []
+    , until = Nothing
+    , maxCount = Nothing
+    , setPosition = []
+    }
+
 -- JSON stuff starts here
 
 encodeEvent : Event -> JE.Value
