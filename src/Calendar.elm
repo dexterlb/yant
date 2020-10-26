@@ -414,3 +414,13 @@ kindFromString s = case s of
 
 hasReminders : Event -> Bool
 hasReminders evt = not (List.isEmpty evt.reminders)
+
+timesOf : ReminderRepeat -> Int
+timesOf rr = case rr of
+    RepeatAt n _ -> n
+    NoRepeat     -> 1
+
+intervalOf : ReminderRepeat -> Duration
+intervalOf rr = case rr of
+    RepeatAt _ d -> d
+    NoRepeat     -> 10 * 60

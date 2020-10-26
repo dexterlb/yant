@@ -118,7 +118,26 @@ setReminder model index rem = let event = model.event in
 
 viewReminderRepeatPicker : ReminderRepeat -> (ReminderRepeat -> Model -> Model) -> Html Msg
 viewReminderRepeatPicker rr f = div [ class "reminder-repeat-picker" ]
-    [ text "repeat picker goes here" ]
+    [ text "repeat"
+    , input
+        [ type_ "number"
+        , value (String.fromInt <| Calendar.timesOf rr)
+        , HE.onInput (\v -> Evil (f (
+            case String.toInt v of
+                Nothing -> rr
+                Just n  ->
+                    case n <= 1 of
+                        True  -> NoRepeat
+                        False -> RepeatAt n (Calendar.intervalOf rr)
+            )))
+        ] []
+    , case rr of
+        NoRepeat -> span [] [ text "times" ]
+        RepeatAt n int -> span []
+            [ text "times, spaced at"
+            , viewDurationPicker int (\dur -> f (RepeatAt n dur))
+            ]
+    ]
 
 viewNoisinessPicker : Noisiness -> (Noisiness -> Model -> Model) -> Html Msg
 viewNoisinessPicker rr f = div [ class "noisiness-picker" ]
