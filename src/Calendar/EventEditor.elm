@@ -140,8 +140,17 @@ viewReminderRepeatPicker rr f = div [ class "reminder-repeat-picker" ]
     ]
 
 viewNoisinessPicker : Noisiness -> (Noisiness -> Model -> Model) -> Html Msg
-viewNoisinessPicker rr f = div [ class "noisiness-picker" ]
-    [ text "noisiness picker goes here" ]
+viewNoisinessPicker n f = select
+    [ class "noisiness-picker" 
+    , HE.onInput (\ns -> Evil (f (case ns of
+        "noisy"  -> Noisy
+        "silent" -> Silent
+        _        -> Noisy
+        )))
+    ]
+    [ option [ value "noisy",  selected (n == Noisy) ]  [ text "noisy" ]
+    , option [ value "silent", selected (n == Silent) ] [ text "silent" ]
+    ]
 
 viewSignedDurationPicker : SignedDuration -> (SignedDuration -> Model -> Model) -> Html Msg
 viewSignedDurationPicker dur f = div
