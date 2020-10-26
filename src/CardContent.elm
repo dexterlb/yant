@@ -137,12 +137,9 @@ viewIndicatorElements : Data -> List (Html Msg)
 viewIndicatorElements data = case data.calEvents of
     [] -> []
     _  -> [ indicator "indicator-cal-event" "item has a calendar event" ]
-
-indicator : String -> String -> Html Msg
-indicator className textContent =
-    div
-        [ class "indicator", class className, title textContent ]
-        [ span [ class "sr-only" ] [ text textContent ] ]
+          ++ (case (List.any Calendar.hasReminders data.calEvents) of
+                True  -> [ indicator "indicator-reminder" "item has a reminder" ]
+                False -> [])
 
 buttons : Model -> Html Msg
 buttons model = case model.state of

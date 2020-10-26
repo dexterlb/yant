@@ -101,13 +101,62 @@ viewReminderEditors model = div [ class "reminder-editors" ]
 
 viewReminderEditor : Model -> Int -> Reminder-> Html Msg
 viewReminderEditor model index rem = let event = model.event in div [ class "reminder-editor" ]
-    [ text "reminder editor goes here"
+    [ indicator "indicator-reminder" "reminder"
+    , viewSignedDurationPicker rem.trigger (\dur m -> setReminder m index { rem | trigger = dur })
     , button
         [ class "calendar-event-btn"
         , class "add-reminder-btn"
         , onClick (Evil (\m -> { m | event = { event | reminders = event.reminders |> silentDelete index } })) ]
         [ text "delete" ]
     ]
+
+setReminder : Model -> Int -> Reminder -> Model
+setReminder model index rem = let event = model.event in 
+    { model | event = { event | reminders = silentUpdate index rem event.reminders } }
+
+viewSignedDurationPicker : SignedDuration -> (SignedDuration -> Model -> Model) -> Html Msg
+viewSignedDurationPicker dur f = div
+    [ class "signed-duration-picker" ]
+    [ case dur <= 0 of
+        True  -> viewDurationPicker (0 - dur) (\newDur m -> f (0 - newDur) m)
+        False -> viewDurationPicker    dur  (\newDur m -> f newDur    m)
+    , case dur == 0 of
+        True  -> text "at the moment of the event"
+        False -> select
+            [ class "duration-sign"
+            , HE.onInput (\dsn -> Evil ( f (case dsn of
+                "before" -> 0 - (abs dur)
+                "after"  -> 0 + (abs dur)
+                _        -> dur
+                    )))
+            ]
+            [ option [ value "before", selected (dur < 0) ] [ text "Before" ]
+            , option [ value "after",  selected (dur > 0) ] [ text "After"  ]
+            ]
+    ]
+
+viewDurationPicker : Duration -> (Duration -> Model -> Model) -> Html Msg
+viewDurationPicker dur f = div
+    [ class "duration-picker" ]
+    
+    [ viewDurationMultiplePicker 86400     0  dur f, text "days"
+    , viewDurationMultiplePicker 3600      24 dur f, text "hr"
+    , viewDurationMultiplePicker 60        60 dur f, text "min"
+    , viewDurationMultiplePicker 1         60 dur f, text "sec"
+    ]
+
+viewDurationMultiplePicker : Int -> Int -> Duration -> (Duration -> Model -> Model) -> Html Msg
+viewDurationMultiplePicker quot rem dur f =
+    let current = case rem of
+                    0 ->            dur // quot
+                    _ -> modBy rem (dur // quot) 
+    in input
+        [ class "duration-multiple", type_ "number"
+        , value (String.fromInt current)
+        , HE.onInput (\v -> case String.toInt v of
+            Just new -> Evil (f (dur - current * quot + new * quot))
+            Nothing  -> Evil (f dur))
+        ] []
 
 viewDTPicker : DateTime -> (DateTime -> Model -> Model) -> Html Msg
 viewDTPicker dt f = div

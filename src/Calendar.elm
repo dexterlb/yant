@@ -411,3 +411,6 @@ kindFromString s = case s of
     "calendar_event"   -> Just CalendarEvent
     "task"             -> Just Task
     _                  -> Nothing
+
+hasReminders : Event -> Bool
+hasReminders evt = not (List.isEmpty evt.reminders)

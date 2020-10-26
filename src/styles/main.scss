@@ -77,13 +77,20 @@ pre, code {
 }
 
 .indicator {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
     &.indicator-cal-event {
         &::before {
             content: '🗓️';
         }
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+    }
+
+    &.indicator-reminder {
+        &::before {
+            content: '🔔';
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 module Utils exposing ( hash, hash01, catMaybes, notEmpty
                       , decodeOptional, decodeOptionalList, decodeOrFail
-                      , onClick, checkbox
+                      , onClick, checkbox, indicator
                       , silentDelete, silentUpdate )
 
 
@@ -13,7 +13,7 @@ import Json.Decode exposing (Decoder)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
 
-import Html exposing (Html)
+import Html as HT exposing (Html)
 import Html.Events as HE
 import Html.Attributes as HA
 
@@ -53,6 +53,18 @@ notEmpty l = case l of
     [] -> Nothing
     _  -> Just l
 
+silentDelete : Int -> List a -> List a
+silentDelete idx l = case (idx, l) of
+    (0, (_ :: xs)) -> xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentDelete (idx - 1) xs)
+
+silentUpdate : Int -> a -> List a -> List a
+silentUpdate idx elem l = case (idx, l) of
+    (0, (_ :: xs)) -> elem :: xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentUpdate (idx - 1) elem xs)
+
 -- json utils
 
 decodeOptional : String -> Decoder a -> Decoder ((Maybe a) -> b) -> Decoder b
@@ -68,27 +80,22 @@ decodeOrFail msg d = d |> JD.andThen (\m -> case m of
 
 -- html utils
 
-onClick : msg -> Html.Attribute msg
+onClick : msg -> HT.Attribute msg
 onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))
 
-checkbox : List (Html.Attribute msg) -> List (Html msg) -> Html msg
-checkbox attrs labelElements = Html.span []
-    [ Html.input
+checkbox : List (HT.Attribute msg) -> List (Html msg) -> Html msg
+checkbox attrs labelElements = HT.span []
+    [ HT.input
       ( (HA.type_ "checkbox") :: attrs )
       []
-    , Html.label
+    , HT.label
       []
       labelElements
     ]
 
-silentDelete : Int -> List a -> List a
-silentDelete idx l = case (idx, l) of
-    (0, (_ :: xs)) -> xs
-    (_, [])        -> []
-    (_, (x :: xs)) -> x :: (silentDelete (idx - 1) xs)
+indicator : String -> String -> Html msg
+indicator className textContent =
+    HT.div
+        [ HA.class "indicator", HA.class className, HA.title textContent ]
+        [ HT.span [ HA.class "sr-only" ] [ HT.text textContent ] ]
 
-silentUpdate : Int -> a -> List a -> List a
-silentUpdate idx elem l = case (idx, l) of
-    (0, (_ :: xs)) -> elem :: xs
-    (_, [])        -> []
-    (_, (x :: xs)) -> x :: (silentUpdate (idx - 1) elem xs)
