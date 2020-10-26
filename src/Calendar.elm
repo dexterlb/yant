@@ -126,6 +126,13 @@ defaultEvent tz time = let dt = dateTimeFromTime tz time in
     , reminders = []
     }
 
+defaultReminder : Reminder
+defaultReminder =
+    { noisiness = Noisy
+    , trigger = 0
+    , repeat = NoRepeat
+    }
+
 -- JSON stuff starts here
 
 encodeEvent : Event -> JE.Value

@@ -75,6 +75,16 @@ view model = let event = model.event in div
                 ]
                 (List.map (kindOption model.event.kind) [ Task, CalendarEvent ])
             ]
+        , div
+            [ class "reminder-list" ]
+            [ label [] [ text "reminders: " ]
+            , viewReminderEditors model
+            , button
+                [ class "calendar-event-btn"
+                , class "add-reminder-btn"
+                , onClick (Evil (\m -> { m | event = { event | reminders = defaultReminder :: event.reminders } })) ]
+                [ text "add reminder" ]
+            ]
         ]
     ]
 
@@ -84,6 +94,20 @@ fixup model = let event = model.event in model
             True -> { m | event = { event | start = setTime (0, 0, 0) event.start 
                                           , end = Maybe.map (setTime (23, 59, 59)) event.end } }
             False -> m)
+
+viewReminderEditors : Model -> Html Msg
+viewReminderEditors model = div [ class "reminder-editors" ]
+    (List.indexedMap (viewReminderEditor model) model.event.reminders)
+
+viewReminderEditor : Model -> Int -> Reminder-> Html Msg
+viewReminderEditor model index rem = let event = model.event in div [ class "reminder-editor" ]
+    [ text "reminder editor goes here"
+    , button
+        [ class "calendar-event-btn"
+        , class "add-reminder-btn"
+        , onClick (Evil (\m -> { m | event = { event | reminders = event.reminders |> silentDelete index } })) ]
+        [ text "delete" ]
+    ]
 
 viewDTPicker : DateTime -> (DateTime -> Model -> Model) -> Html Msg
 viewDTPicker dt f = div

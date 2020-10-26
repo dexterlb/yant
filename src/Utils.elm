@@ -1,6 +1,7 @@
 module Utils exposing ( hash, hash01, catMaybes, notEmpty
                       , decodeOptional, decodeOptionalList, decodeOrFail
-                      , onClick, checkbox )
+                      , onClick, checkbox
+                      , silentDelete, silentUpdate )
 
 
 import Bitwise
@@ -79,3 +80,15 @@ checkbox attrs labelElements = Html.span []
       []
       labelElements
     ]
+
+silentDelete : Int -> List a -> List a
+silentDelete idx l = case (idx, l) of
+    (0, (_ :: xs)) -> xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentDelete (idx - 1) xs)
+
+silentUpdate : Int -> a -> List a -> List a
+silentUpdate idx elem l = case (idx, l) of
+    (0, (_ :: xs)) -> elem :: xs
+    (_, [])        -> []
+    (_, (x :: xs)) -> x :: (silentUpdate (idx - 1) elem xs)
