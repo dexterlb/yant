@@ -60,8 +60,7 @@ type alias FilterSet =
 type alias Reminder =
     { noisiness : Noisiness
     , trigger   : SignedDuration    -- before or after the event
-    , repeat    : ReminderRepeat
-    }
+    , repeat    : ReminderRepeat   }
 
 type ReminderRepeat
     = NoRepeat
@@ -330,6 +329,16 @@ freqToString freq = case freq of
     Monthly  -> "MONTHLY"
     Yearly   -> "YEARLY"
 
+freqPlural : Freq -> String
+freqPlural freq = case freq of
+    Secondly -> "seconds"
+    Minutely -> "minutes"
+    Hourly   -> "hours"
+    Daily    -> "days"
+    Weekly   -> "weeks"
+    Monthly  -> "months"
+    Yearly   -> "years"
+
 freqFromString : String -> Maybe Freq
 freqFromString s = case s of
     "SECONDLY" -> Just Secondly
@@ -340,6 +349,17 @@ freqFromString s = case s of
     "MONTHLY"  -> Just Monthly
     "YEARLY"   -> Just Yearly
     _          -> Nothing
+
+allFreqs : List Freq
+allFreqs =
+    [ Secondly
+    , Minutely
+    , Hourly
+    , Daily
+    , Weekly
+    , Monthly
+    , Yearly
+    ]
 
 weekdayToString : Weekday -> String
 weekdayToString wd = case wd of

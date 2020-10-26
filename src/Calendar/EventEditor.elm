@@ -111,7 +111,34 @@ fixup model = let event = model.event in model
 
 viewRepeatEditor : Repeat -> (Repeat -> Model -> Model) -> Html Msg
 viewRepeatEditor rep f = div [ class "repeat-editor" ]
-    [ text "repeat editor goes here" ]
+    [ text "every"
+    , input
+        [ type_ "number"
+        , value (String.fromInt <| rep.interval)
+        , HE.onInput (\v -> Evil (f (
+            case String.toInt v of
+                Nothing  -> rep
+                Just int ->
+                    case int <= 1 of
+                        True  -> { rep | interval = 1 }
+                        False -> { rep | interval = int }
+            )))
+        ] []
+    , select
+        [ HE.onInput (\fs -> Evil (f (case freqFromString fs of
+            Nothing   -> rep
+            Just freq -> { rep | freq = freq })))
+        ]
+        ( allFreqs |> List.map (\freq ->
+            option [ value (freqToString freq), selected (freq == rep.freq) ]
+                   [ text (freqPlural freq) ] ))
+    , viewFilterSetPicker rep.filterSet (\fs -> f { rep | filterSet = fs })
+    ]
+
+viewFilterSetPicker : FilterSet -> (FilterSet -> Model -> Model) -> Html Msg
+viewFilterSetPicker fs f = div
+    [ class "filter-set-picker" ]
+    [ text "filter set picker goes here" ]
 
 viewReminderEditors : Model -> Html Msg
 viewReminderEditors model = div [ class "reminder-editors" ]
