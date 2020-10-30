@@ -158,6 +158,31 @@ viewFilterSetPicker defaultUntil fs f = div
             Nothing    -> text ""
             Just until -> viewDTPicker until (\newUntil -> f { fs | until = Just newUntil })
         ]
+    , div [ class "maxCount" ]
+        [ checkbox
+            [ checked (fs.maxCount /= Nothing)
+            , onClick (Evil (f { fs | maxCount =
+                case fs.maxCount of
+                    Nothing -> Just 1
+                    Just _  -> Nothing } ) )
+            ]
+            [ text "max count" ]
+        , case fs.maxCount of
+            Nothing    -> text ""
+            Just maxCount ->
+                input
+                [ type_ "number"
+                , value (String.fromInt maxCount)
+                , HE.onInput (\v -> Evil (f (
+                    case String.toInt v of
+                        Nothing -> fs
+                        Just n  ->
+                            case n < 1 of
+                                True  -> fs
+                                False -> { fs | maxCount = Just n }
+                    )))
+                ] []
+        ]
     ]
 
 weekdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Weekday -> Bool -> Html Msg
