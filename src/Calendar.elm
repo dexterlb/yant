@@ -142,9 +142,9 @@ defaultRepeat =
 
 emptyFilterSet : FilterSet
 emptyFilterSet =
-    { weekdays = []
-    , monthdays = []
-    , months = []
+    { weekdays = allWeekdays
+    , monthdays = allMonthdays
+    , months = allMonths
     , exclude = []
     , until = Nothing
     , maxCount = Nothing
@@ -182,12 +182,12 @@ encodeRepeat rep = JE.object <| catMaybes
                 rep.filterSet.until
     , Maybe.map ( \x -> ( "count", JE.int x ) )
                 rep.filterSet.maxCount
-    , Maybe.map ( \xs -> ( "byDay", JE.list encodeWeekday xs ) )
-                ( notEmpty rep.filterSet.weekdays )
-    , Maybe.map ( \xs -> ( "byMonth", JE.list encodeMonth xs ) )
-                ( notEmpty rep.filterSet.months )
-    , Maybe.map ( \xs -> ( "byMonthDay", JE.list JE.int xs ) )
-                ( notEmpty rep.filterSet.monthdays )
+    , Maybe.map ( \xs -> ( "byDay", JE.list encodeWeekday  xs ) )
+                ( notEmpty ( emptyWhenHasAll allWeekdays rep.filterSet.weekdays ) )
+    , Maybe.map ( \xs -> ( "byMonth", JE.list encodeMonth  xs ) )
+                ( notEmpty ( emptyWhenHasAll allMonths rep.filterSet.months ) )
+    , Maybe.map ( \xs -> ( "byMonthDay", JE.list JE.int  xs ) )
+                ( notEmpty ( emptyWhenHasAll allMonthdays rep.filterSet.monthdays ) )
     , Maybe.map ( \xs -> ( "exclude", JE.list encodeDateTime xs ) )
                 ( notEmpty rep.filterSet.exclude )
     , Maybe.map ( \xs -> ( "bySetPos", JE.list JE.int xs ) )
@@ -204,9 +204,9 @@ decodeRepeat = JD.map4 Repeat
 
 decodeFilterSet : Decoder FilterSet
 decodeFilterSet = JD.succeed FilterSet
-    |> decodeOptionalList "byDay" decodeWeekday
-    |> decodeOptionalList "byMonthDay" JD.int
-    |> decodeOptionalList "byMonth" decodeMonth
+    |> JDP.optional "byDay" (JD.list decodeWeekday |> JD.map (whenEmpty allWeekdays)) allWeekdays
+    |> JDP.optional "byMonthDay" (JD.list JD.int |> JD.map (whenEmpty allMonthdays)) allMonthdays
+    |> JDP.optional "byMonth" (JD.list decodeMonth |> JD.map (whenEmpty allMonths)) allMonths
     |> decodeOptionalList "exclude" decodeDateTime
     |> decodeOptional     "until" decodeDateTime
     |> decodeOptional     "count" JD.int
@@ -359,6 +359,36 @@ allFreqs =
     , Weekly
     , Monthly
     , Yearly
+    ]
+
+allWeekdays : List Weekday
+allWeekdays =
+    [ Time.Mon
+    , Time.Tue
+    , Time.Wed
+    , Time.Thu
+    , Time.Fri
+    , Time.Sat
+    , Time.Sun
+    ]
+
+allMonthdays : List Int
+allMonthdays = List.range 1 31
+
+allMonths : List Month
+allMonths =
+    [ Time.Jan
+    , Time.Feb
+    , Time.Mar
+    , Time.Apr
+    , Time.May
+    , Time.Jun
+    , Time.Jul
+    , Time.Aug
+    , Time.Sep
+    , Time.Oct
+    , Time.Nov
+    , Time.Dec
     ]
 
 weekdayToString : Weekday -> String

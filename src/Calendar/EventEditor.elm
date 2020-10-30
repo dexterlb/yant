@@ -138,7 +138,17 @@ viewRepeatEditor rep f = div [ class "repeat-editor" ]
 viewFilterSetPicker : FilterSet -> (FilterSet -> Model -> Model) -> Html Msg
 viewFilterSetPicker fs f = div
     [ class "filter-set-picker" ]
-    [ text "filter set picker goes here" ]
+    [ label [] [ text "only on:" ]
+    , div [ class "weekdays" ] (allWeekdays |> List.map (\wd ->
+        weekdayCheckbox fs f wd (List.member wd fs.weekdays) ))
+    ]
+
+weekdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Weekday -> Bool -> Html Msg
+weekdayCheckbox fs f wd isChecked = checkbox
+    [ checked isChecked
+    , onClick (Evil (f { fs | weekdays = setMember wd (not isChecked) fs.weekdays }))
+    ]
+    [ text (weekdayToString wd) ]
 
 viewReminderEditors : Model -> Html Msg
 viewReminderEditors model = div [ class "reminder-editors" ]

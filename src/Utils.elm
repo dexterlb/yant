@@ -1,7 +1,8 @@
 module Utils exposing ( hash, hash01, catMaybes, notEmpty
                       , decodeOptional, decodeOptionalList, decodeOrFail
                       , onClick, checkbox, indicator
-                      , silentDelete, silentUpdate )
+                      , silentDelete, silentUpdate, setMember
+                      , whenEmpty, emptyWhenHasAll )
 
 
 import Bitwise
@@ -64,6 +65,29 @@ silentUpdate idx elem l = case (idx, l) of
     (0, (_ :: xs)) -> elem :: xs
     (_, [])        -> []
     (_, (x :: xs)) -> x :: (silentUpdate (idx - 1) elem xs)
+
+setMember : a -> Bool -> List a -> List a
+setMember x b l = case (l, b) of
+    ([], True) -> [x]
+    ([], False) -> []
+    ((y :: xs), False) -> case x == y of
+        True -> setMember x False xs
+        False -> y :: (setMember x False xs)
+    ((y :: xs), True) -> case x == y of
+        True -> y :: (setMember x False xs)
+        False -> y :: (setMember x True xs)
+
+whenEmpty : List a -> List a -> List a
+whenEmpty default l = case l of
+    [] -> default
+    _  -> l
+
+emptyWhenHasAll : List a -> List a -> List a
+emptyWhenHasAll items l =
+    case List.all (\x -> List.member x l) items of
+        True  -> []
+        False -> l
+
 
 -- json utils
 
