@@ -87,7 +87,7 @@ view model = let event = model.event in div
                 [ text "repeat" ]
             , case event.repeat of
                 Nothing  -> text ""
-                Just rep -> viewRepeatEditor rep (\r m -> { m | event = { event | repeat = Just r } })
+                Just rep -> viewRepeatEditor event.start rep (\r m -> { m | event = { event | repeat = Just r } })
             ]
         , div
             [ class "reminder-list" ]
@@ -109,8 +109,8 @@ fixup model = let event = model.event in model
                                           , end = Maybe.map (setTime (23, 59, 59)) event.end } }
             False -> m)
 
-viewRepeatEditor : Repeat -> (Repeat -> Model -> Model) -> Html Msg
-viewRepeatEditor rep f = div [ class "repeat-editor" ]
+viewRepeatEditor : DateTime -> Repeat -> (Repeat -> Model -> Model) -> Html Msg
+viewRepeatEditor defaultDT rep f = div [ class "repeat-editor" ]
     [ text "every"
     , input
         [ type_ "number"
@@ -132,11 +132,11 @@ viewRepeatEditor rep f = div [ class "repeat-editor" ]
         ( allFreqs |> List.map (\freq ->
             option [ value (freqToString freq), selected (freq == rep.freq) ]
                    [ text (freqPlural freq) ] ))
-    , viewFilterSetPicker rep.filterSet (\fs -> f { rep | filterSet = fs })
+    , viewFilterSetPicker defaultDT rep.filterSet (\fs -> f { rep | filterSet = fs })
     ]
 
-viewFilterSetPicker : FilterSet -> (FilterSet -> Model -> Model) -> Html Msg
-viewFilterSetPicker fs f = div
+viewFilterSetPicker : DateTime -> FilterSet -> (FilterSet -> Model -> Model) -> Html Msg
+viewFilterSetPicker defaultUntil fs f = div
     [ class "filter-set-picker" ]
     [ label [] [ text "only on:" ]
     , div [ class "weekdays" ] (allWeekdays |> List.map (\wd ->
@@ -145,6 +145,19 @@ viewFilterSetPicker fs f = div
         monthdayCheckbox fs f wd (List.member wd fs.monthdays) ))
     , div [ class "months" ] (allMonths |> List.map (\wd ->
         monthCheckbox fs f wd (List.member wd fs.months) ))
+    , div [ class "until" ]
+        [ checkbox
+            [ checked (fs.until /= Nothing)
+            , onClick (Evil (f { fs | until =
+                case fs.until of
+                    Nothing -> Just defaultUntil
+                    Just _  -> Nothing } ) )
+            ]
+            [ text "until" ]
+        , case fs.until of
+            Nothing    -> text ""
+            Just until -> viewDTPicker until (\newUntil -> f { fs | until = Just newUntil })
+        ]
     ]
 
 weekdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Weekday -> Bool -> Html Msg
