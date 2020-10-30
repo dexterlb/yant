@@ -141,6 +141,10 @@ viewFilterSetPicker fs f = div
     [ label [] [ text "only on:" ]
     , div [ class "weekdays" ] (allWeekdays |> List.map (\wd ->
         weekdayCheckbox fs f wd (List.member wd fs.weekdays) ))
+    , div [ class "monthdays" ] (allMonthdays |> List.map (\wd ->
+        monthdayCheckbox fs f wd (List.member wd fs.monthdays) ))
+    , div [ class "months" ] (allMonths |> List.map (\wd ->
+        monthCheckbox fs f wd (List.member wd fs.months) ))
     ]
 
 weekdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Weekday -> Bool -> Html Msg
@@ -149,6 +153,20 @@ weekdayCheckbox fs f wd isChecked = checkbox
     , onClick (Evil (f { fs | weekdays = setMember wd (not isChecked) fs.weekdays }))
     ]
     [ text (weekdayToString wd) ]
+
+monthdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Monthday -> Bool -> Html Msg
+monthdayCheckbox fs f md isChecked = checkbox
+    [ checked isChecked
+    , onClick (Evil (f { fs | monthdays = setMember md (not isChecked) fs.monthdays }))
+    ]
+    [ text (String.fromInt md) ]
+
+monthCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Month -> Bool -> Html Msg
+monthCheckbox fs f m isChecked = checkbox
+    [ checked isChecked
+    , onClick (Evil (f { fs | months = setMember m (not isChecked) fs.months }))
+    ]
+    [ text (monthToString m) ]
 
 viewReminderEditors : Model -> Html Msg
 viewReminderEditors model = div [ class "reminder-editors" ]

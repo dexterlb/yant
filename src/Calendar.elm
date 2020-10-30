@@ -438,6 +438,21 @@ monthToInt month = case month of
     Time.Nov -> 11
     Time.Dec -> 12
 
+monthToString : Month -> String
+monthToString month = case month of
+    Time.Jan -> "Jan"
+    Time.Feb -> "Feb"
+    Time.Mar -> "Mar"
+    Time.Apr -> "Apr"
+    Time.May -> "May"
+    Time.Jun -> "Jun"
+    Time.Jul -> "Jul"
+    Time.Aug -> "Aug"
+    Time.Sep -> "Sep"
+    Time.Oct -> "Oct"
+    Time.Nov -> "Nov"
+    Time.Dec -> "Dec"
+
 monthFromInt : Int -> Maybe Month
 monthFromInt i = case i of
     1  -> Just Time.Jan
