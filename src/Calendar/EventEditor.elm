@@ -36,12 +36,12 @@ view model = let event = model.event in div
     [ div
         [ class "start-end" ]
         [ div
-            [ class "dtp-group" ]
+            [ class "dt-group" ]
             [ label [] [ text "at: " ]
             , viewDTPicker event.start (\dt m -> { m | event = { event | start = dt } })
             ]
         , div
-            [ class "dtp-group" ]
+            [ class "dt-group" ]
             [ label [] [ text "end: " ]
             , case event.end of
                 Nothing ->
@@ -57,7 +57,7 @@ view model = let event = model.event in div
                     ]
             ]
         , div
-            [ class "dtp-group" ]
+            [ class "dt-group" ]
             [ checkbox event.allDay
                 [ onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
                 ]
@@ -72,7 +72,7 @@ view model = let event = model.event in div
                 (List.map (kindOption model.event.kind) [ Task, CalendarEvent ])
             ]
         , div
-            [ class "dtp-group" ]
+            [ class "dt-group" ]
             [ checkbox (event.repeat /= Nothing)
                 [ onClick (Evil (\m -> { m | event = { event | repeat =
                     case event.repeat of

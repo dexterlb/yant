@@ -270,6 +270,22 @@ dateTimeFromTime tz t = let tzd = Timezones.timezoneOf tz in
     , timezone  = tz
     }
 
+dateTimeToHumanString : DateTime -> String
+dateTimeToHumanString dt
+    =  (String.padLeft 2 '0' <| String.fromInt dt.year)
+    ++ "-"
+    ++ (String.padLeft 2 '0' <| String.fromInt <| monthToInt dt.month)
+    ++ "-"
+    ++ (String.padLeft 4 '0' <| String.fromInt dt.year)
+    ++ " "
+    ++ (String.padLeft 2 '0' <| String.fromInt dt.hour)
+    ++ ":"
+    ++ (String.padLeft 2 '0' <| String.fromInt dt.minute)
+    ++ ":"
+    ++ (String.padLeft 2 '0' <| String.fromInt dt.second)
+    ++ " "
+    ++ (Timezones.toString dt.timezone)
+
 encodeFreq : Freq -> JE.Value
 encodeFreq freq = JE.string (freqToString freq)
 

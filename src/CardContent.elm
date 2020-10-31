@@ -16,7 +16,7 @@ import Time
 import Task
 
 import Calendar
-import Calendar.UI
+import Calendar.EventViewer
 import Calendar.EventEditor
 import Utils exposing (..)
 import Settings exposing (Settings)
@@ -171,7 +171,7 @@ viewCalEvents mectx cevts =
 viewCalEvent : Int -> Calendar.Event -> Html Msg
 viewCalEvent idx cevt = div [ class "calendar-event" ]
     [ indicator "indicator-cal-event" "calendar event"
-    , Calendar.UI.viewEvent cevt
+    , Calendar.EventViewer.view cevt
     , button
         [ class "calendar-event-btn", onClick (EditCalEvent cevt idx) ]
         [ text "edit" ]
