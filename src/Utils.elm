@@ -107,10 +107,10 @@ decodeOrFail msg d = d |> JD.andThen (\m -> case m of
 onClick : msg -> HT.Attribute msg
 onClick msg = HE.stopPropagationOn "click" (JD.succeed (msg, True))
 
-checkbox : List (HT.Attribute msg) -> List (Html msg) -> Html msg
-checkbox attrs labelElements = HT.span []
+checkbox : Bool -> List (HT.Attribute msg) -> List (Html msg) -> Html msg
+checkbox checked attrs labelElements = HT.span attrs
     [ HT.input
-      ( (HA.type_ "checkbox") :: attrs )
+      [ HA.type_ "checkbox", HA.checked checked ]
       []
     , HT.label
       []

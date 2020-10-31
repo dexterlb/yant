@@ -1,7 +1,7 @@
 module Calendar.EventEditor exposing (Model, Msg, init, update, view, getEvent)
 
 import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option, optgroup, span)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, step, required, selected, attribute)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, step, required, selected, attribute)
 import Html.Events as HE
 
 import Json.Encode as JE
@@ -45,29 +45,25 @@ view model = let event = model.event in div
             [ label [] [ text "end: " ]
             , case event.end of
                 Nothing ->
-                    checkbox
-                        [ checked False
-                        , HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start, kind = CalendarEvent } }))
+                    checkbox False
+                        [ HE.onClick (Evil (\m -> { m | event = { event | end = Just event.start, kind = CalendarEvent } }))
                         ]
                         []
                 Just end -> span []
-                    [ checkbox
-                        [ checked True
-                        , HE.onClick (Evil (\m -> { m | event = { event | end = Nothing, kind = Task } }))
+                    [ checkbox True
+                        [ HE.onClick (Evil (\m -> { m | event = { event | end = Nothing, kind = Task } }))
                         ] []
                     , viewDTPicker end (\dt m -> { m | event = { event | end = Just dt } })
                     ]
             ]
         , div
             [ class "dtp-group" ]
-            [ checkbox
-                [ checked event.allDay
-                , onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
+            [ checkbox event.allDay
+                [ onClick (Evil (\m -> { m | event = { event | allDay = not event.allDay } } ) )
                 ]
                 [ text "all day" ]
-            , checkbox
-                [ checked event.busy
-                , onClick (Evil (\m -> { m | event = { event | busy = not event.busy } } ) )
+            , checkbox event.busy
+                [ onClick (Evil (\m -> { m | event = { event | busy = not event.busy } } ) )
                 ]
                 [ text "treat as busy" ]
             , select
@@ -77,9 +73,8 @@ view model = let event = model.event in div
             ]
         , div
             [ class "dtp-group" ]
-            [ checkbox
-                [ checked (event.repeat /= Nothing)
-                , onClick (Evil (\m -> { m | event = { event | repeat =
+            [ checkbox (event.repeat /= Nothing)
+                [ onClick (Evil (\m -> { m | event = { event | repeat =
                     case event.repeat of
                         Nothing -> Just defaultRepeat
                         Just _  -> Nothing } } ) )
@@ -146,9 +141,8 @@ viewFilterSetPicker defaultUntil fs f = div
     , div [ class "months" ] (allMonths |> List.map (\wd ->
         monthCheckbox fs f wd (List.member wd fs.months) ))
     , div [ class "until" ]
-        [ checkbox
-            [ checked (fs.until /= Nothing)
-            , onClick (Evil (f { fs | until =
+        [ checkbox (fs.until /= Nothing)
+            [ onClick (Evil (f { fs | until =
                 case fs.until of
                     Nothing -> Just defaultUntil
                     Just _  -> Nothing } ) )
@@ -159,9 +153,8 @@ viewFilterSetPicker defaultUntil fs f = div
             Just until -> viewDTPicker until (\newUntil -> f { fs | until = Just newUntil })
         ]
     , div [ class "maxCount" ]
-        [ checkbox
-            [ checked (fs.maxCount /= Nothing)
-            , onClick (Evil (f { fs | maxCount =
+        [ checkbox (fs.maxCount /= Nothing)
+            [ onClick (Evil (f { fs | maxCount =
                 case fs.maxCount of
                     Nothing -> Just 1
                     Just _  -> Nothing } ) )
@@ -186,23 +179,20 @@ viewFilterSetPicker defaultUntil fs f = div
     ]
 
 weekdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Weekday -> Bool -> Html Msg
-weekdayCheckbox fs f wd isChecked = checkbox
-    [ checked isChecked
-    , onClick (Evil (f { fs | weekdays = setMember wd (not isChecked) fs.weekdays }))
+weekdayCheckbox fs f wd checked = checkbox checked
+    [ onClick (Evil (f { fs | weekdays = setMember wd (not checked) fs.weekdays }))
     ]
     [ text (weekdayToString wd) ]
 
 monthdayCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Monthday -> Bool -> Html Msg
-monthdayCheckbox fs f md isChecked = checkbox
-    [ checked isChecked
-    , onClick (Evil (f { fs | monthdays = setMember md (not isChecked) fs.monthdays }))
+monthdayCheckbox fs f md checked = checkbox checked
+    [ onClick (Evil (f { fs | monthdays = setMember md (not checked) fs.monthdays }))
     ]
     [ text (String.fromInt md) ]
 
 monthCheckbox : FilterSet -> (FilterSet -> Model -> Model) -> Month -> Bool -> Html Msg
-monthCheckbox fs f m isChecked = checkbox
-    [ checked isChecked
-    , onClick (Evil (f { fs | months = setMember m (not isChecked) fs.months }))
+monthCheckbox fs f m checked = checkbox checked
+    [ onClick (Evil (f { fs | months = setMember m (not checked) fs.months }))
     ]
     [ text (monthToString m) ]
 
