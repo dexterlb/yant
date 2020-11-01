@@ -78,7 +78,7 @@ pre, code {
 
 .indicator {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
 
     &.indicator-cal-event {
@@ -100,6 +100,12 @@ pre, code {
     margin-right: 0.2em;
     display: flex;
     flex-direction: row;
+
+    .indicator {
+        .label {
+            @include sr-only;
+        }
+    }
 }
 
 .calendar-events {
@@ -117,6 +123,12 @@ pre, code {
             flex-shrink: 3;
             margin-left: 1em;
             margin-right: 1em;
+        }
+
+        > .indicator {
+            .label {
+                @include sr-only;
+            }
         }
 
         button {

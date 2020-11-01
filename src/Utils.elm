@@ -121,5 +121,5 @@ indicator : String -> String -> Html msg
 indicator className textContent =
     HT.div
         [ HA.class "indicator", HA.class className, HA.title textContent ]
-        [ HT.span [ HA.class "sr-only" ] [ HT.text textContent ] ]
+        [ HT.span [ HA.class "label" ] [ HT.text textContent ] ]
 
