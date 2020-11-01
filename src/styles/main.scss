@@ -92,6 +92,12 @@ pre, code {
             content: '🔔';
         }
     }
+
+    &.indicator-repeat {
+        &::before {
+            content: '🔁';
+        }
+    }
 }
 
 .indicators {

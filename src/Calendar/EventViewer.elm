@@ -33,17 +33,28 @@ view event = div
                     , viewDT end
                     ]
             Nothing -> text ""
-        , div
-            [ class "dt-group" ]
-            [ case event.repeat of
-                Nothing  -> text ""
-                Just _   -> text "repeating"
-            ]
+        , case event.repeat of
+            Nothing  -> text ""
+            Just rep -> viewRepeat rep event.start
         , case event.reminders of
             [] -> text ""
-            _  -> indicator "indicator-reminder" "item has a reminder"
+            _  -> indicator "indicator-reminder" "has a reminder"
         ]
     ]
+
+viewRepeat : Repeat -> DateTime -> Html msg
+viewRepeat rep start = let txt = case rep.freq of
+                                    Secondly -> "second"
+                                    Minutely -> "minute"
+                                    Hourly -> "hour"
+                                    Daily -> "day"
+                                    Weekly -> "week"
+                                    Monthly -> "month"
+                                    Yearly -> "year"
+    in
+        indicator "indicator-repeat" ("repeats every " ++ txt)
+
+
 
 viewDT : DateTime -> Html msg
 viewDT dt = text (dateTimeToHumanString dt)
