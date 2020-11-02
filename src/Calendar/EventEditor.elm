@@ -1,7 +1,7 @@
 module Calendar.EventEditor exposing (Model, Msg, init, update, view, getEvent)
 
 import Html exposing (Html, div, pre, text, button, textarea, input, label, select, option, optgroup, span)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, step, required, selected, attribute)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, step, required, selected, attribute, size)
 import Html.Events as HE
 
 import Json.Encode as JE
@@ -86,14 +86,19 @@ view model = let event = model.event in div
             ]
         , div
             [ class "reminder-list" ]
-            [ label [] [ text "reminders: " ]
-            , viewReminderEditors model
-            , button
+            ( ( case event.reminders of
+                    [] -> []
+                    _  ->
+                        [ label [] [ text "reminders: " ]
+                        , viewReminderEditors model
+                        ]
+            ) ++
+            [ button
                 [ class "calendar-event-btn"
                 , class "add-reminder-btn"
                 , onClick (Evil (\m -> { m | event = { event | reminders = defaultReminder :: event.reminders } })) ]
                 [ text "add reminder" ]
-            ]
+            ])
         ]
     ]
 
@@ -110,6 +115,7 @@ viewRepeatEditor defaultDT rep f = div [ class "repeat-editor" ]
     , input
         [ type_ "number"
         , value (String.fromInt <| rep.interval)
+        , size 3
         , HE.onInput (\v -> Evil (f (
             case String.toInt v of
                 Nothing  -> rep
@@ -166,6 +172,7 @@ viewFilterSetPicker defaultUntil fs f = div
                 input
                 [ type_ "number"
                 , value (String.fromInt maxCount)
+                , size 3
                 , HE.onInput (\v -> Evil (f (
                     case String.toInt v of
                         Nothing -> fs
@@ -206,9 +213,10 @@ viewReminderEditor model index rem = let event = model.event in div [ class "rem
     , viewSignedDurationPicker rem.trigger (\dur m -> setReminder m index { rem | trigger = dur })
     , viewReminderRepeatPicker rem.repeat  (\rep m -> setReminder m index { rem | repeat  = rep })
     , viewNoisinessPicker      rem.noisiness (\n m -> setReminder m index { rem | noisiness = n })
+    , div [ class "spacer" ] []
     , button
         [ class "calendar-event-btn"
-        , class "add-reminder-btn"
+        , class "delete-reminder-btn"
         , onClick (Evil (\m -> { m | event = { event | reminders = event.reminders |> silentDelete index } })) ]
         [ text "delete" ]
     ]
@@ -222,6 +230,7 @@ viewReminderRepeatPicker rr f = div [ class "reminder-repeat-picker" ]
     [ text "repeat"
     , input
         [ type_ "number"
+        , size 3
         , value (String.fromInt <| Calendar.timesOf rr)
         , HE.onInput (\v -> Evil (f (
             case String.toInt v of
@@ -291,6 +300,7 @@ viewDurationMultiplePicker quot rem dur f =
                     _ -> modBy rem (dur // quot)
     in input
         [ class "duration-multiple", type_ "number"
+        , size 3
         , value (String.fromInt current)
         , HE.onInput (\v -> case String.toInt v of
             Just new -> Evil (f (dur - current * quot + new * quot))
