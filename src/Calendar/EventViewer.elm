@@ -17,29 +17,26 @@ view : Event -> Html msg
 view event = div
     [ class "cal-event-view" ]
     [ div
-        [ class "start-end" ]
-        [ div
-            [ class "dt-group" ]
-            [ case event.end of
-                Nothing -> label [] [ text "at" ]
-                Just _  -> label [] [ text "from" ]
-            , viewDT event.start
-            ]
-        , case event.end of
-            Just end ->
-                div
-                    [ class "dt-group" ]
-                    [ label [] [ text "to" ]
-                    , viewDT end
-                    ]
-            Nothing -> text ""
-        , case event.repeat of
-            Nothing  -> text ""
-            Just rep -> viewRepeat rep event.start
-        , case event.reminders of
-            [] -> text ""
-            _  -> indicator "indicator-reminder" "has a reminder"
+        [ class "dt-group" ]
+        [ case event.end of
+            Nothing -> label [] [ text "at" ]
+            Just _  -> label [] [ text "from" ]
+        , viewDT event.start
         ]
+    , case event.end of
+        Just end ->
+            div
+                [ class "dt-group" ]
+                [ label [] [ text "to" ]
+                , viewDT end
+                ]
+        Nothing -> text ""
+    , case event.repeat of
+        Nothing  -> text ""
+        Just rep -> viewRepeat rep event.start
+    , case event.reminders of
+        [] -> text ""
+        _  -> indicator "indicator-reminder" "has a reminder"
     ]
 
 viewRepeat : Repeat -> DateTime -> Html msg

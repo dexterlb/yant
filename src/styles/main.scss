@@ -114,6 +114,11 @@ pre, code {
     }
 }
 
+.calendar-events-outer {
+    display: flex;
+    background-color: rgba(100, 100, 100, 0.1);
+}
+
 .calendar-events {
     display: flex;
     flex-direction: column;
@@ -122,8 +127,20 @@ pre, code {
         display: flex;
         flex-direction: row;
         align-items: center;
-        margin-left: 1em;
-        margin-right: 1em;
+        margin: 1em;
+
+        .cal-event-view {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 2;
+            margin-left: 0.5em;
+            margin-right: 0.5em;
+        }
+
+        label {
+            margin-left: 0.5em;
+            margin-right: 0.5em;
+        }
 
         .event-content {
             flex-shrink: 3;
@@ -199,7 +216,7 @@ pre, code {
                 background-color: rgba(100, 100, 100, 0.1);
             }
 
-            .card-content {
+            .card-body {
                 margin-left: 0.4em;
                 padding-top: 0.2em;
                 padding-bottom: 0.2em;

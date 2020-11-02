@@ -113,8 +113,8 @@ viewDataOnly data = div
     ]
 
 viewBody : Data -> Html Msg
-viewBody data =
-    ( case data.text
+viewBody data = div [ class "card-body" ]
+    [ ( case data.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
             |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
@@ -125,7 +125,8 @@ viewBody data =
             Err errors ->
                 div [ class "markdown-errors" ] [ text errors ]
 
-    ) |> detectMaths data.text
+      ) |> detectMaths data.text
+    ]
 
 viewIndicators : Data -> Html Msg
 viewIndicators data = let indicatorElements = viewIndicatorElements data
@@ -166,7 +167,9 @@ viewCalEvents mectx cevts =
                                 True -> viewCalEventEditor idx editor
                                 False -> viewCalEvent idx cevt)
     in
-        div [ class "calendar-events" ] (List.indexedMap viewOrEdit cevts)
+        div [ class "calendar-events-outer" ]
+            [ div [ class "calendar-events" ] (List.indexedMap viewOrEdit cevts)
+            ]
 
 viewCalEvent : Int -> Calendar.Event -> Html Msg
 viewCalEvent idx cevt = div [ class "calendar-event" ]
