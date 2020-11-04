@@ -51,7 +51,7 @@ type State
 type Msg
     = SetDone Bool
     | Edit
-    | SaveEdit
+    | Save
     | Cancel
     | TextChanged String
 
@@ -61,11 +61,9 @@ type Msg
     | AddCalEventWithTime Time.Posix
     | EditCalEvent Calendar.Event Int
     | DeleteCalEvent Int
-    | SaveCalEvent
 
     | AttachFile
     | EditAttachedFile AttachedFile Int
-    | SaveAttachedFile
     | DetachFile Int
     | DownloadAttachedFile AttachedFile
 
@@ -169,22 +167,30 @@ buttons : Model -> Html Msg
 buttons model = case model.state of
     NormalState             -> viewNormalButtonBar model
     EditState _             -> viewEditButtonBar model
-    EditCalEventState _     -> viewCancelButtonBar model
-    EditAttachedFileState _ -> viewCancelButtonBar model
+    EditCalEventState _     -> viewSaveCancelButtonBar model
+    EditAttachedFileState _ -> viewSaveCancelButtonBar model
 
 event : Context -> Event -> Model -> (Model, Cmd Msg, Actions)
 event ctx evt model = let data = model.data in case (evt, model.state) of
-    (Destroy, EditState _) -> update ctx SaveEdit model
-    (Destroy, _) -> (model, Cmd.none, [])
-    (BeginEdit, EditState _) ->
-        let (model1, cmd1, actions1) = update ctx SaveEdit model
+    (Destroy, _) -> update ctx Save model
+    (BeginEdit, _) ->
+        let (model1, cmd1, actions1) = update ctx Save model
         in let (model2, cmd2, actions2) = update ctx Edit model
         in (model2, Cmd.batch [ cmd1, cmd2 ], actions1 ++ actions2)
-    (BeginEdit, _) -> update ctx Edit model
     (ReceiveAttachedFile af, _) ->
         ( { model | data = { data | attachedFiles = af :: data.attachedFiles } }
         , Cmd.none
         , [] )
+
+viewSaveCancelButtons : List (Html Msg)
+viewSaveCancelButtons =
+    [ button
+        [ class "save-btn", onClick Save ]
+        [ text "save" ]
+    , button
+        [ class "cancel-btn", onClick Cancel ]
+        [ text "cancel" ]
+    ]
 
 viewCalEvents : (Maybe EditCalEventContext) -> List Calendar.Event -> Html Msg
 viewCalEvents mectx cevts =
@@ -213,16 +219,10 @@ viewCalEvent idx cevt = div [ class "calendar-event" ]
 
 viewCalEventEditor : Int -> Calendar.EventEditor.Model -> Html Msg
 viewCalEventEditor idx cevt = div [ class "calendar-event" ]
-    [ indicator "indicator-cal-event" "calendar-event"
-    , Calendar.EventEditor.view cevt
-      |> Html.map CalEventEditorMsg
-    , button
-        [ class "calendar-event-btn", onClick SaveCalEvent ]
-        [ text "save" ]
-    , button
-        [ class "calendar-event-btn", onClick Cancel ]
-        [ text "cancel" ]
-    ]
+    ( [ indicator "indicator-cal-event" "calendar-event"
+      , Calendar.EventEditor.view cevt
+        |> Html.map CalEventEditorMsg
+      ] ++ viewSaveCancelButtons )
 
 viewAttachedFiles : (Maybe EditAttachedFileContext) -> List AttachedFile -> Html Msg
 viewAttachedFiles mectx attachedFiles =
@@ -258,15 +258,9 @@ viewAttachedFileLink af = a
 
 viewAttachedFileEditor : Int -> AttachedFile -> Html Msg
 viewAttachedFileEditor idx af = div [ class "attached-file" ]
-    [ indicator "indicator-attached-file" "attached file"
-    , viewAttachedFileEditorBody af
-    , button
-        [ class "attached-file-btn", onClick SaveAttachedFile ]
-        [ text "save" ]
-    , button
-        [ class "attached-file-btn", onClick Cancel ]
-        [ text "cancel" ]
-    ]
+    ( [ indicator "indicator-attached-file" "attached file"
+      , viewAttachedFileEditorBody af
+      ] ++ viewSaveCancelButtons )
 
 viewAttachedFileEditorBody : AttachedFile -> Html Msg
 viewAttachedFileEditorBody af = div [ class "attached-file-editor" ]
@@ -295,20 +289,12 @@ viewNormalButtonBar model = div [ class "button-group", class "button-group-cont
 
 viewEditButtonBar : Model -> Html Msg
 viewEditButtonBar model = div [ class "button-group", class "button-group-content" ]
-    [ button
-        [ onClick SaveEdit ]
-        [ text "save" ]
-    , button
-        [ onClick Cancel ]
-        [ text "cancel" ]
-    ]
+    ( [
+      ] ++ viewSaveCancelButtons )
 
-viewCancelButtonBar : Model -> Html Msg
-viewCancelButtonBar model = div [ class "button-group", class "button-group-content" ]
-    [ button
-        [ onClick Cancel ]
-        [ text "cancel" ]
-    ]
+viewSaveCancelButtonBar : Model -> Html Msg
+viewSaveCancelButtonBar model = div [ class "button-group", class "button-group-content" ]
+    viewSaveCancelButtons
 
 update : Context -> Msg -> Model -> (Model, Cmd Msg, Actions)
 update ctx msg model = let data  = model.data
@@ -316,9 +302,8 @@ update ctx msg model = let data  = model.data
     (SetDone done, _)          -> (model |> setData  { data  | done = done }, Cmd.none, [])
     (Edit,         _)          -> (model |> setState (EditState (beginEdit model)), Cmd.none, [])
     (Cancel,       _)          -> (model |> setState NormalState, Cmd.none, [])
-    (SaveEdit, EditState ectx) -> (model |> setData  { data  | text = ectx.text }
-                                         |> setState NormalState, Cmd.none, [])
-    (SaveEdit, _)              -> (model |> setState NormalState, Cmd.none, [])
+    (Save, EditState ectx) -> (model |> setData  { data  | text = ectx.text }
+                                     |> setState NormalState, Cmd.none, [])
     (TextChanged newText, EditState ectx) ->
         ( model |> setState (EditState { ectx | text = newText }), Cmd.none, [] )
     (TextChanged _, _) -> ( model, Cmd.none, [] )
@@ -342,7 +327,7 @@ update ctx msg model = let data  = model.data
             , Cmd.map CalEventEditorMsg cecmd
             , []
             )
-    (SaveCalEvent, EditCalEventState cectx) ->
+    (Save, EditCalEventState cectx) ->
         ( model |> updateCalEvent cectx.calEventIndex (Calendar.EventEditor.getEvent cectx.editor)
                 |> setState NormalState
         , Cmd.none
@@ -350,18 +335,17 @@ update ctx msg model = let data  = model.data
         )
 
     (CalEventEditorMsg _, _) -> (model, Cmd.none, [])
-    (SaveCalEvent, _) -> (model, Cmd.none, [])
 
     (AttachFile, _) -> (model, Cmd.none, [ RequestAttachedFile ])
     (DetachFile idx, _)          -> ( model |> deleteAttachedFile  idx, Cmd.none, [] )
     (EditAttachedFile af idx, _) -> ( model |> editAttachedFile af idx, Cmd.none, [] )
-    (SaveAttachedFile, EditAttachedFileState afectx) ->
+    (Save, EditAttachedFileState afectx) ->
         ( model |> updateAttachedFile afectx.fileIndex afectx.file |> setState NormalState
         , Cmd.none
         , []
         )
     (DownloadAttachedFile af, _) -> ( model, Cmd.none, [ RequestAttachedFileDownload af ] )
-    (SaveAttachedFile, _) -> ( model, Cmd.none, [] )
+    (Save, NormalState) -> ( model, Cmd.none, [] )
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
