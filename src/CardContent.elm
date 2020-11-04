@@ -92,6 +92,11 @@ type alias EditAttachedFileContext =
     , file: AttachedFile
     }
 
+type EditPerm a
+    = EditingEnabled
+    | EditingDisabled
+    | EditingNow a
+
 emptyModel : Data -> Model
 emptyModel data =
     { state = NormalState
@@ -113,17 +118,25 @@ viewEdit model ectx = div
         , placeholder "enter some note text"
         , HE.onInput TextChanged
         ] []
+    , viewFooter model
     ]
 
 viewNormal : Model -> Html Msg
 viewNormal model = div [ class "card-content" ]
     [ viewBody model.data
+    , viewFooter model
+    ]
+
+viewFooter : Model -> Html Msg
+viewFooter model = div [ class "card-footer" ]
+    [ case model.state of
+        EditCalEventState ectx -> viewCalEvents (EditingNow ectx) model.data.calEvents
+        NormalState            -> viewCalEvents EditingEnabled    model.data.calEvents
+        _                      -> viewCalEvents EditingDisabled   model.data.calEvents
     , case model.state of
-        EditCalEventState ectx -> viewCalEvents (Just ectx) model.data.calEvents
-        _                      -> viewCalEvents Nothing     model.data.calEvents
-    , case model.state of
-        EditAttachedFileState ectx -> viewAttachedFiles (Just ectx) model.data.attachedFiles
-        _                          -> viewAttachedFiles Nothing     model.data.attachedFiles
+        EditAttachedFileState ectx -> viewAttachedFiles (EditingNow ectx) model.data.attachedFiles
+        NormalState                -> viewAttachedFiles EditingEnabled    model.data.attachedFiles
+        _                          -> viewAttachedFiles EditingDisabled   model.data.attachedFiles
     ]
 
 viewDataOnly : Data -> Html Msg
@@ -192,30 +205,35 @@ viewSaveCancelButtons =
         [ text "cancel" ]
     ]
 
-viewCalEvents : (Maybe EditCalEventContext) -> List Calendar.Event -> Html Msg
+viewCalEvents : (EditPerm EditCalEventContext) -> List Calendar.Event -> Html Msg
 viewCalEvents mectx cevts =
     let viewOrEdit = case mectx of
-                        Nothing -> viewCalEvent
-                        Just { calEventIndex, editor } ->
+                        EditingEnabled  -> viewCalEvent True
+                        EditingDisabled -> viewCalEvent False
+                        EditingNow { calEventIndex, editor } ->
                             (\idx cevt -> case idx == calEventIndex of
                                 True -> viewCalEventEditor idx editor
-                                False -> viewCalEvent idx cevt)
+                                False -> viewCalEvent False idx cevt)
     in
         div [ class "calendar-events-outer" ]
             [ div [ class "calendar-events" ] (List.indexedMap viewOrEdit cevts)
             ]
 
-viewCalEvent : Int -> Calendar.Event -> Html Msg
-viewCalEvent idx cevt = div [ class "calendar-event" ]
-    [ indicator "indicator-cal-event" "calendar event"
-    , Calendar.EventViewer.view cevt
-    , button
-        [ class "calendar-event-btn", onClick (EditCalEvent cevt idx) ]
-        [ text "edit" ]
-    , button
-        [ class "calendar-event-btn", onClick (DeleteCalEvent idx) ]
-        [ text "delete" ]
-    ]
+viewCalEvent : Bool -> Int -> Calendar.Event -> Html Msg
+viewCalEvent showButtons idx cevt = div [ class "calendar-event" ]
+    ( [ indicator "indicator-cal-event" "calendar event"
+      , Calendar.EventViewer.view cevt
+      ] ++ (case showButtons of
+                True ->
+                    [ button
+                        [ class "calendar-event-btn", onClick (EditCalEvent cevt idx) ]
+                        [ text "edit" ]
+                    , button
+                        [ class "calendar-event-btn", onClick (DeleteCalEvent idx) ]
+                        [ text "delete" ]
+                    ]
+                False -> []
+                ) )
 
 viewCalEventEditor : Int -> Calendar.EventEditor.Model -> Html Msg
 viewCalEventEditor idx cevt = div [ class "calendar-event" ]
@@ -224,30 +242,35 @@ viewCalEventEditor idx cevt = div [ class "calendar-event" ]
         |> Html.map CalEventEditorMsg
       ] ++ viewSaveCancelButtons )
 
-viewAttachedFiles : (Maybe EditAttachedFileContext) -> List AttachedFile -> Html Msg
+viewAttachedFiles : (EditPerm EditAttachedFileContext) -> List AttachedFile -> Html Msg
 viewAttachedFiles mectx attachedFiles =
     let viewOrEdit = case mectx of
-                        Nothing -> viewAttachedFile
-                        Just { fileIndex, file } ->
+                        EditingEnabled  -> viewAttachedFile True
+                        EditingDisabled -> viewAttachedFile False
+                        EditingNow { fileIndex, file } ->
                             (\idx af -> case idx == fileIndex of
                                 True -> viewAttachedFileEditor idx file
-                                False -> viewAttachedFile idx af)
+                                False -> viewAttachedFile False idx af)
     in
         div [ class "attached-files-outer" ]
             [ div [ class "attached-files" ] (List.indexedMap viewOrEdit attachedFiles)
             ]
 
-viewAttachedFile : Int -> AttachedFile -> Html Msg
-viewAttachedFile idx af = div [ class "attached-file" ]
-    [ indicator "indicator-attached-file" "attached file"
-    , viewAttachedFileLink af
-    , button
-        [ class "attach-file-btn", onClick (EditAttachedFile af idx) ]
-        [ text "edit" ]
-    , button
-        [ class "attach-file-btn", onClick (DetachFile idx) ]
-        [ text "detach" ]
-    ]
+viewAttachedFile : Bool -> Int -> AttachedFile -> Html Msg
+viewAttachedFile showButtons idx af = div [ class "attached-file" ]
+    ( [ indicator "indicator-attached-file" "attached file"
+      , viewAttachedFileLink af
+      ] ++ (case showButtons of
+                True ->
+                    [ button
+                        [ class "attach-file-btn", onClick (EditAttachedFile af idx) ]
+                        [ text "edit" ]
+                    , button
+                        [ class "attach-file-btn", onClick (DetachFile idx) ]
+                        [ text "detach" ]
+                    ]
+                False -> []
+            ) )
 
 viewAttachedFileLink : AttachedFile -> Html Msg
 viewAttachedFileLink af = a
