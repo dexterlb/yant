@@ -21,9 +21,11 @@ function init(app: ElmApp): Context {
     }
 }
 
+import * as localforage from 'localforage';
+
 async function process_get_card(ctx: Context, cardID: string): Promise<void> {
-    let storage = window.localStorage;
-    let card = storage.getItem('card_' + cardID)
+    let storage = localforage
+    let card = await storage.getItem('card_' + cardID) as string
 
     if (card == null) {
         console.log("returning empty card at ", cardID)
@@ -42,15 +44,15 @@ async function process_get_card(ctx: Context, cardID: string): Promise<void> {
 }
 
 async function process_save_card(ctx: Context, card: any): Promise<void> {
-    let id = card.id;
+    let id = card.id
     if (!id) {
         throw new Error("invalid card id - " + id)
     }
 
     console.log("saving card at ", card.id, " : ", card)
 
-    let storage = window.localStorage;
-    storage.setItem('card_' + id, JSON.stringify(card))
+    let storage = localforage;
+    await storage.setItem('card_' + id, JSON.stringify(card))
 }
 
 function main() {
