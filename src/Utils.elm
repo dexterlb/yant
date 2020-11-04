@@ -2,7 +2,8 @@ module Utils exposing ( hash, hash01, catMaybes, notEmpty
                       , decodeOptional, decodeOptionalList, decodeOrFail
                       , onClick, checkbox, indicator
                       , silentDelete, silentUpdate, setMember
-                      , whenEmpty, emptyWhenHasAll )
+                      , whenEmpty, emptyWhenHasAll
+                      , crash)
 
 
 import Bitwise
@@ -122,4 +123,9 @@ indicator className textContent =
     HT.div
         [ HA.class "indicator", HA.class className, HA.title textContent ]
         [ HT.span [ HA.class "label" ] [ HT.text textContent ] ]
+
+
+-- here be dragons
+crash : String -> a
+crash s = Debug.todo s
 

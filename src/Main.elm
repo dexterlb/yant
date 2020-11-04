@@ -16,6 +16,7 @@ import Html.Attributes exposing (class)
 import Ui
 import Storage
 import Cards
+import Utils exposing (..)
 
 
 main =
@@ -105,7 +106,7 @@ subscriptions _ = Sub.batch
 
 handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg
 handleJson handler decoder v = case JD.decodeValue decoder v of
-    Err err  -> Debug.todo (JD.errorToString err)
+    Err err  -> crash (JD.errorToString err)
     Ok  data -> handler data
 
 -- VIEW

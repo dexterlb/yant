@@ -16,7 +16,7 @@ import Json.Decode as JD
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
-import Utils as Utils exposing (onClick)
+import Utils as Utils exposing (onClick, crash)
 import CardContent as CardContent
 import Settings as Settings exposing (Settings)
 
@@ -208,13 +208,13 @@ processContentActions : CardContent.Actions -> Model -> (Model, Actions)
 processContentActions cas model = case cas of
     [] -> (model, [])
     (c :: cs) -> let (model1, actions1) = processContentAction c model
-                 in let (model2, actions2) = processContentActions cs model
+                 in let (model2, actions2) = processContentActions cs model1
                  in (model2, actions1 ++ actions2)
 
 processContentAction : CardContent.Action -> Model -> (Model, Actions)
 processContentAction ca model = case ca of
-    CardContent.RequestAttachedFile -> Debug.todo "implement me"
-    CardContent.RequestAttachedFileDownload af -> Debug.todo "implement me"
+    CardContent.RequestAttachedFile -> ( setError NotImplemented model, [] )
+    CardContent.RequestAttachedFileDownload af -> ( setError NotImplemented model, [] )
 
 cardContentContext : Model -> CardContent.Context
 cardContentContext model = { settings = model.settings }
@@ -527,12 +527,12 @@ childrenOf cards id = case Dict.get id cards of
 getParent : CardPath -> CardID
 getParent path = case NE.tail path |> List.head of
     Just parent -> parent
-    Nothing -> Debug.todo "looking for parent of root"
+    Nothing -> crash "looking for parent of root"
 
 getParentPath : CardPath -> CardPath
 getParentPath path = case NE.tail path |> NE.fromList of
     Just l  -> l
-    Nothing -> Debug.todo "looking for parent of root"
+    Nothing -> crash "looking for parent of root"
 
 setError : ErrorMessage -> Model -> Model
 setError err model = { model | error = Just err }
@@ -582,6 +582,4 @@ fetch k d =
         Just v ->
             v
 
-            -- here be dragons
-        -- Nothing -> makeUndefined k
-        Nothing -> Debug.todo "item not in dict"
+        Nothing -> crash "item not in dict"
