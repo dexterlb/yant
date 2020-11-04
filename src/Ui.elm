@@ -213,7 +213,8 @@ processContentActions cas model = case cas of
 
 processContentAction : CardContent.Action -> Model -> (Model, Actions)
 processContentAction ca model = case ca of
-    CardContent.Dunno -> Debug.todo "implement me"
+    CardContent.RequestAttachedFile -> Debug.todo "implement me"
+    CardContent.RequestAttachedFileDownload af -> Debug.todo "implement me"
 
 cardContentContext : Model -> CardContent.Context
 cardContentContext model = { settings = model.settings }
