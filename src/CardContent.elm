@@ -260,9 +260,7 @@ viewAttachedFiles mectx attachedFiles =
 viewAttachedFile : Bool -> Int -> AttachedFile -> Html Msg
 viewAttachedFile showButtons idx af = div [ class "attached-file" ]
     ( [ indicator "indicator-attached-file" "attached file"
-      , viewAttachedFileLink af
-      , text " "
-      , viewAttachedFileType af
+      , viewAttachedFileBody af
       ] ++ (case showButtons of
                 True ->
                     [ button
@@ -274,6 +272,13 @@ viewAttachedFile showButtons idx af = div [ class "attached-file" ]
                     ]
                 False -> []
             ) )
+
+viewAttachedFileBody : AttachedFile -> Html Msg
+viewAttachedFileBody af = div [ class "attached-file-view" ]
+    [ viewAttachedFileLink af
+    , text " "
+    , viewAttachedFileType af
+    ]
 
 viewAttachedFileLink : AttachedFile -> Html Msg
 viewAttachedFileLink af = span

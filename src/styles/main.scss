@@ -98,6 +98,12 @@ pre, code {
             content: '🔁';
         }
     }
+
+    &.indicator-attached-file {
+        &::before {
+            content: '📎';
+        }
+    }
 }
 
 .indicators {
@@ -114,9 +120,58 @@ pre, code {
     }
 }
 
-.calendar-events-outer {
+.calendar-events-outer, .attached-files-outer {
     display: flex;
     background-color: rgba(100, 100, 100, 0.1);
+}
+
+.attached-files {
+    display: flex;
+    flex-direction: column;
+
+    .attached-file {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin: 1em;
+
+        > .indicator {
+            .label {
+                @include sr-only;
+            }
+        }
+
+        button {
+            margin: 0.2em;
+
+            border: none;
+            outline: none;
+
+            background-color: rgba(200, 50, 10, 0.3);
+
+            &:hover {
+                background-color: rgba(200, 50, 10, 0.5);
+            }
+        }
+
+        .attached-file-view {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 2;
+            margin-left: 0.5em;
+            margin-right: 0.5em;
+
+            .attached-file-link {
+                color: #247fbb;
+                text-decoration: underline;
+                cursor: pointer;
+
+                &:hover {
+                    color: #528aaf;
+                }
+            }
+        }
+    }
 }
 
 .calendar-events {
