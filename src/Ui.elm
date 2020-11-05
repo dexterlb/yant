@@ -76,10 +76,13 @@ type Msg
 
 type InputMsg
     = GotCard Card
+    | ReceivedAttachedFile CardContent.AttachedFile
 
 type Action
     = GetCard CardID
     | SaveCard Card
+    | RequestAttachedFile
+    | RequestAttachedFileDownload CardContent.AttachedFile
 
 type alias Actions = List Action
 
@@ -213,8 +216,10 @@ processContentActions cas model = case cas of
 
 processContentAction : CardContent.Action -> Model -> (Model, Actions)
 processContentAction ca model = case ca of
-    CardContent.RequestAttachedFile -> ( setError NotImplemented model, [] )
-    CardContent.RequestAttachedFileDownload af -> ( setError NotImplemented model, [] )
+    CardContent.RequestAttachedFile ->
+        ( model , [ RequestAttachedFile ] )
+    CardContent.RequestAttachedFileDownload af ->
+        ( model, [ RequestAttachedFileDownload af ] )
 
 cardContentContext : Model -> CardContent.Context
 cardContentContext model = { settings = model.settings }
@@ -232,6 +237,9 @@ pushMsg inMsg model = case inMsg of
                             in (model4, Cmd.batch [ cmd3, cmd4 ], actions4)
                     False -> (model1, Cmd.none, [])
                 _ -> (model1, Cmd.none, [])
+    ReceivedAttachedFile af -> selectedCardEvent (CardContent.ReceivedAttachedFile af) model
+
+
 
 
 viewCard : Model -> CardPath -> Cards -> Html Msg

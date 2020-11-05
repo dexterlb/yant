@@ -9,23 +9,31 @@ let elm = require('./Main.elm')
 require('./maths.ts')
 require('./fonts.ts')
 
+import * as localforage from 'localforage';
+import * as sjcl        from 'sjcl';
+
 type ElmApp = any   // he he
 
 interface Context {
     app: ElmApp
+    storage: LocalForage
 }
 
 function init(app: ElmApp): Context {
     return {
         app: app,
+        storage: localforage,
     }
 }
 
-import * as localforage from 'localforage';
+interface AttachedFile {
+    name: string,
+    hash: string,
+    mime_type: string,
+}
 
-async function process_get_card(ctx: Context, cardID: string): Promise<void> {
-    let storage = localforage
-    let card = await storage.getItem('card_' + cardID) as string
+async function process_get_card(ctx: Context, cardID: string) {
+    let card = await ctx.storage.getItem('card_' + cardID) as string
 
     if (card == null) {
         console.log("returning empty card at ", cardID)
@@ -43,7 +51,7 @@ async function process_get_card(ctx: Context, cardID: string): Promise<void> {
     }
 }
 
-async function process_save_card(ctx: Context, card: any): Promise<void> {
+async function process_save_card(ctx: Context, card: any) {
     let id = card.id
     if (!id) {
         throw new Error("invalid card id - " + id)
@@ -51,8 +59,67 @@ async function process_save_card(ctx: Context, card: any): Promise<void> {
 
     console.log("saving card at ", card.id, " : ", card)
 
-    let storage = localforage;
-    await storage.setItem('card_' + id, JSON.stringify(card))
+    await ctx.storage.setItem('card_' + id, JSON.stringify(card))
+}
+
+function read_file(file: File): Promise<string> {
+    let reader = new FileReader()
+    let result = new Promise<string>((ok, err) => {
+        reader.onload = () => {
+            ok(reader.result as string)
+        }
+        reader.onerror = err
+    })
+
+    reader.readAsDataURL(file)
+    return result
+}
+
+async function process_file_for_attach(ctx: Context, file: File) {
+    // todo: this is very suboptimal; find a way to properly store the blob
+
+    let data_url = await read_file(file)
+    let data_bits = sjcl.codec.base64.toBits(data_url.split(',')[1])
+    let hash = sjcl.codec.base64.fromBits(sjcl.hash.sha256.hash(data_bits)).substring(0, 32)
+
+    await ctx.storage.setItem('file_' + hash, data_url)
+
+    let af: AttachedFile = {
+        name: file.name,
+        hash: hash,
+        mime_type: file.type,
+    }
+
+    ctx.app.ports.attachedFile.send(af)
+}
+
+async function process_attach_file(ctx: Context) {
+    let file_input = document.createElement('input') as HTMLInputElement;
+    file_input.type = 'file';
+
+    file_input.onchange = e => {
+        let target = e.target as HTMLInputElement;
+        if (!target.files) {
+            return
+        }
+
+        for (let file of target.files) {
+            process_file_for_attach(ctx, file).catch(err => {
+                console.log('unable to process attachment file: ', err)
+            })
+        }
+    }
+
+    file_input.click()
+}
+
+async function process_download_attached_file(ctx: Context, af: AttachedFile) {
+    let data_url = await ctx.storage.getItem('file_' + af.hash) as string
+
+    let download_el = document.createElement('a') as HTMLAnchorElement
+    download_el.href = data_url
+    download_el.download = af.name
+    download_el.click()
 }
 
 function main() {
@@ -70,6 +137,18 @@ function main() {
         process_save_card(ctx, card).then(() => {
         }).catch(err => {
             console.log('error while processing save_card request for ', card, ': ', err)
+        })
+    });
+    app.ports.attachFile.subscribe(() => {
+        process_attach_file(ctx).then(() => {
+        }).catch(err => {
+            console.log('error while processing save_card request: ', err)
+        })
+    });
+    app.ports.downloadAttachedFile.subscribe((af: AttachedFile) => {
+        process_download_attached_file(ctx, af).then(() => {
+        }).catch(err => {
+            console.log('error while processing download_attached_file request fore ', af, ': ', err)
         })
     });
 }

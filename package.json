@@ -6,9 +6,11 @@
   "dependencies": {
     "@types/katex": "^0.11.0",
     "@types/localforage": "^0.0.34",
+    "@types/sjcl": "^1.0.29",
     "elm-test": "^0.19.1-revision4",
     "katex": "^0.12.0",
     "localforage": "^1.9.0",
+    "sjcl": "^1.0.8",
     "typeface-droid-sans": "0.0.44",
     "typeface-droid-sans-mono": "0.0.44",
     "url-loader": "^4.1.0"

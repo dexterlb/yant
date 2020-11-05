@@ -16,6 +16,7 @@ import Html.Attributes exposing (class)
 import Ui
 import Storage
 import Cards
+import CardContent
 import Utils exposing (..)
 
 
@@ -95,6 +96,8 @@ performUiAction : Model -> Ui.Action -> Cmd Msg
 performUiAction model action = case action of
     Ui.GetCard  id   -> Storage.getCard  <| Cards.encodeCardID id
     Ui.SaveCard card -> Storage.saveCard <| Cards.encodeCard   card
+    Ui.RequestAttachedFile    -> Storage.attachFile ()
+    Ui.RequestAttachedFileDownload af    -> Storage.downloadAttachedFile <| CardContent.encodeAttachedFile af
 
 -- SUBSCRIPTIONS
 
@@ -102,6 +105,7 @@ performUiAction model action = case action of
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.batch
     [ Storage.gotCard (handleJson (UiInput << Ui.GotCard) Cards.decodeCard)
+    , Storage.attachedFile (handleJson (UiInput << Ui.ReceivedAttachedFile) CardContent.decodeAttachedFile)
     ]
 
 handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg

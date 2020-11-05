@@ -1,7 +1,7 @@
-module CardContent exposing (Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event)
+module CardContent exposing (Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event, AttachedFile, encodeAttachedFile, decodeAttachedFile)
 
-import Html exposing (Html, div, text, button, textarea, span, a)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, title, href)
+import Html exposing (Html, div, text, button, textarea, span)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, title)
 import Html.Events as HE
 
 import Markdown.Parser as Markdown
@@ -38,8 +38,9 @@ type alias Context =
     }
 
 type alias AttachedFile =
-    { name: String
-    , hash: String
+    { name:     String
+    , hash:     String
+    , mimeType: String
     }
 
 type State
@@ -70,7 +71,7 @@ type Msg
 type Event
     = Destroy
     | BeginEdit
-    | ReceiveAttachedFile AttachedFile
+    | ReceivedAttachedFile AttachedFile
 
 type Action
     = RequestAttachedFile
@@ -190,7 +191,7 @@ event ctx evt model = let data = model.data in case (evt, model.state) of
         let (model1, cmd1, actions1) = update ctx Save model
         in let (model2, cmd2, actions2) = update ctx Edit model
         in (model2, Cmd.batch [ cmd1, cmd2 ], actions1 ++ actions2)
-    (ReceiveAttachedFile af, _) ->
+    (ReceivedAttachedFile af, _) ->
         ( { model | data = { data | attachedFiles = af :: data.attachedFiles } }
         , Cmd.none
         , [] )
@@ -260,6 +261,8 @@ viewAttachedFile : Bool -> Int -> AttachedFile -> Html Msg
 viewAttachedFile showButtons idx af = div [ class "attached-file" ]
     ( [ indicator "indicator-attached-file" "attached file"
       , viewAttachedFileLink af
+      , text " "
+      , viewAttachedFileType af
       ] ++ (case showButtons of
                 True ->
                     [ button
@@ -273,11 +276,17 @@ viewAttachedFile showButtons idx af = div [ class "attached-file" ]
             ) )
 
 viewAttachedFileLink : AttachedFile -> Html Msg
-viewAttachedFileLink af = a
-    [ href "#"
+viewAttachedFileLink af = span
+    [ class "attached-file-link"
     , onClick (DownloadAttachedFile af)
     ]
     [ text af.name ]
+
+viewAttachedFileType : AttachedFile -> Html Msg
+viewAttachedFileType af = span
+    [ class "attached-file-type"
+    ]
+    [ text af.mimeType ]
 
 viewAttachedFileEditor : Int -> AttachedFile -> Html Msg
 viewAttachedFileEditor idx af = div [ class "attached-file" ]
@@ -447,11 +456,13 @@ encode content = JE.object
 
 decodeAttachedFile : JD.Decoder AttachedFile
 decodeAttachedFile = JD.succeed AttachedFile
-    |> JDP.required "name" JD.string
-    |> JDP.required "hash" JD.string
+    |> JDP.required "name"      JD.string
+    |> JDP.required "hash"      JD.string
+    |> JDP.optional "mime_type" JD.string "application/octet-stream"
 
 encodeAttachedFile : AttachedFile -> JE.Value
 encodeAttachedFile af = JE.object
-    [ ("name", JE.string af.name)
-    , ("hash", JE.string af.hash)
+    [ ("name",      JE.string af.name)
+    , ("hash",      JE.string af.hash)
+    , ("mime_type", JE.string af.mimeType)
     ]
