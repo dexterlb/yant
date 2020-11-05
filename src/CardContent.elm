@@ -1,7 +1,7 @@
 module CardContent exposing (Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event, AttachedFile, encodeAttachedFile, decodeAttachedFile)
 
-import Html exposing (Html, div, text, button, textarea, span)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, title)
+import Html exposing (Html, div, text, button, textarea, span, input)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, title, type_)
 import Html.Events as HE
 
 import Markdown.Parser as Markdown
@@ -57,6 +57,7 @@ type Msg
     | TextChanged String
 
     | CalEventEditorMsg Calendar.EventEditor.Msg
+    | AttachedFileNameMsg String
 
     | AddCalEvent
     | AddCalEventWithTime Time.Posix
@@ -265,7 +266,7 @@ viewAttachedFile showButtons idx af = div [ class "attached-file" ]
                 True ->
                     [ button
                         [ class "attach-file-btn", onClick (EditAttachedFile af idx) ]
-                        [ text "edit" ]
+                        [ text "rename" ]
                     , button
                         [ class "attach-file-btn", onClick (DetachFile idx) ]
                         [ text "detach" ]
@@ -301,7 +302,12 @@ viewAttachedFileEditor idx af = div [ class "attached-file" ]
 
 viewAttachedFileEditorBody : AttachedFile -> Html Msg
 viewAttachedFileEditorBody af = div [ class "attached-file-editor" ]
-    [ text "<editor goes here>" ]
+    [ input
+        [ type_ "text"
+        , HE.onInput AttachedFileNameMsg
+        , value af.name
+        ] []
+    ]
 
 
 viewNormalButtonBar : Model -> Html Msg
@@ -383,6 +389,12 @@ update ctx msg model = let data  = model.data
         )
     (DownloadAttachedFile af, _) -> ( model, Cmd.none, [ RequestAttachedFileDownload af ] )
     (Save, NormalState) -> ( model, Cmd.none, [] )
+    (AttachedFileNameMsg name, EditAttachedFileState afectx) -> let af = afectx.file in
+        ( model |> setState (EditAttachedFileState { afectx | file = { af | name = name } })
+        , Cmd.none
+        , []
+        )
+    (AttachedFileNameMsg _, _) -> (model, Cmd.none, [])
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
