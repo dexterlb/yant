@@ -1,7 +1,7 @@
 module CardContent exposing (Context, view, viewDataOnly, Action(..), Actions, Data, Model, Msg(..), Event(..), encode, decode, update, buttons, emptyModel, event, AttachedFile, encodeAttachedFile, decodeAttachedFile)
 
 import Html exposing (Html, div, text, button, textarea, span, input)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, title, type_)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, title, type_, attribute)
 import Html.Events as HE
 
 import Markdown.Parser as Markdown
@@ -153,7 +153,7 @@ viewBody data = div [ class "card-body" ]
     [ ( case data.text
             |> Markdown.parse
             |> Result.mapError deadEndsToString
-            |> Result.andThen (\ast -> Markdown.Renderer.render renderer ast)
+            |> Result.andThen (\ast -> Markdown.Renderer.render (renderer data) ast)
         of
             Ok rendered ->
                 div [ class "markdown" ] rendered
@@ -437,13 +437,38 @@ deadEndsToString deadEnds =
         |> List.map Markdown.deadEndToString
         |> String.join "\n"
 
-renderer : Markdown.Renderer.Renderer (Html Msg)
-renderer = let default = Markdown.Renderer.defaultHtmlRenderer in
+renderer : Data -> Markdown.Renderer.Renderer (Html Msg)
+renderer data = let default = Markdown.Renderer.defaultHtmlRenderer in
     { default
     | html = Markdown.Html.oneOf
         [
         ]
+    , image = imageRenderer data
     }
+
+type alias ImageInfo =
+    { alt: String
+    , src: String
+    , title: Maybe String
+    }
+
+imageRenderer : Data -> ImageInfo -> Html Msg
+imageRenderer data info = case isRemoteURL info.src of
+    True  -> Markdown.Renderer.defaultHtmlRenderer.image info
+    False -> case getAttachedFile data info.src of
+        Nothing -> div [ class "missing-image" ] [ text "<missing image>" ]
+        Just af -> Html.node "attached-image"
+            [ attribute "hash" af.hash
+            , attribute "alt"  (case info.alt of
+                                    "" -> af.name
+                                    _  -> info.alt)
+            , attribute "title" (Maybe.withDefault af.name info.title)
+            ] []
+
+getAttachedFile : Data -> String -> Maybe AttachedFile
+getAttachedFile data name = case List.filter (\af -> af.name == name) data.attachedFiles of
+    []      -> Nothing
+    af :: _ -> Just af
 
 detectMaths : String -> Html Msg -> Html Msg
 detectMaths content tag = case hasMaths content of
@@ -452,6 +477,9 @@ detectMaths content tag = case hasMaths content of
 
 hasMaths : String -> Bool
 hasMaths s = (String.contains "$" s) || (String.contains "\\(" s) || (String.contains "\\[" s)
+
+isRemoteURL : String -> Bool
+isRemoteURL s = (String.startsWith "http:") s || (String.startsWith "https:" s)
 
 renderMaths : List (Html Msg) -> Html Msg
 renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children
