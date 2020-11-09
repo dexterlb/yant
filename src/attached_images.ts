@@ -24,8 +24,6 @@ export class AttachedImage extends HTMLElement {
             return
         }
 
-        console.log("image; hash: ", hash, " title: ", title, " alt: ", alt)
-
         let fail = () => {
             this.innerHTML = '<div class="image-failed">failed loading image.</div>'
         }
@@ -48,7 +46,6 @@ export class AttachedImage extends HTMLElement {
                     return
                 }
 
-                console.log('loaded image: ', data_url)
                 let img = new Image()
 
                 if (alt != null) {
