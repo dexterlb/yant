@@ -2,6 +2,11 @@ import * as localforage from 'localforage';
 
 import * as storage from './storage.ts'
 
+interface ImageCache {
+    [key: string]: HTMLImageElement,
+}
+var imageCache: ImageCache = {}
+
 export class AttachedImage extends HTMLElement {
     constructor() {
         super();
@@ -11,6 +16,13 @@ export class AttachedImage extends HTMLElement {
         let hash  = this.getAttribute('hash')
         let alt   = this.getAttribute('alt')
         let title = this.getAttribute('title')
+        let cacheKey = JSON.stringify({hash: hash, alt: alt, title: title})
+        let cachedImage = imageCache[cacheKey]
+        if (cachedImage != undefined) {
+            this.innerHTML = ''
+            this.appendChild(cachedImage)
+            return
+        }
 
         console.log("image; hash: ", hash, " title: ", title, " alt: ", alt)
 
@@ -47,6 +59,9 @@ export class AttachedImage extends HTMLElement {
                 }
 
                 img.src = data_url
+
+                imageCache[cacheKey] = img
+
                 this.innerHTML = ''
                 this.appendChild(img)
             })
