@@ -19,10 +19,12 @@ export class AttachedImage extends HTMLElement {
         let cacheKey = JSON.stringify({hash: hash, alt: alt, title: title})
         let cachedImage = imageCache[cacheKey]
         if (cachedImage != undefined) {
+            console.log('got image from cache ', cacheKey, cachedImage)
             this.innerHTML = ''
-            this.appendChild(cachedImage)
+            this.appendChild(cachedImage.cloneNode(true))
             return
         }
+        console.log('image not in cache ', cacheKey)
 
         let fail = () => {
             this.innerHTML = '<div class="image-failed">failed loading image.</div>'
