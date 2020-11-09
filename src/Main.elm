@@ -81,12 +81,16 @@ update msg model =
                     )
 
         UiMsg uiMsg ->
-            let (ui, cmd, actions) = Ui.update uiMsg model.ui in
-                ({ model | ui = ui }, Cmd.batch [Cmd.map UiMsg cmd, performUiActions model actions])
+            let (ui, cmd, actions) = Ui.update uiMsg model.ui
+            in let model2 = { model | ui = ui }
+            in
+                (model2, Cmd.batch [Cmd.map UiMsg cmd, performUiActions model2 actions])
 
         UiInput input ->
-            let (ui, cmd, actions) = Ui.pushMsg input model.ui in
-                ({ model | ui = ui }, Cmd.batch [Cmd.map UiMsg cmd, performUiActions model actions])
+            let (ui, cmd, actions) = Ui.pushMsg input model.ui
+            in let model2 = { model | ui = ui }
+            in
+                (model2, Cmd.batch [Cmd.map UiMsg cmd, performUiActions model2 actions])
 
 
 performUiActions : Model -> Ui.Actions -> Cmd Msg
