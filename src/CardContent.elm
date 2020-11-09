@@ -68,6 +68,7 @@ type Msg
     | EditAttachedFile AttachedFile Int
     | DetachFile Int
     | DownloadAttachedFile AttachedFile
+    | InsertImage AttachedFile
 
 type Event
     = Destroy
@@ -178,6 +179,9 @@ viewIndicatorElements data = case data.calEvents of
                 True  -> [ indicator "indicator-reminder" "item has a reminder" ]
                 False -> [])
 
+insertImage : AttachedFile -> Data -> Data
+insertImage af d = { d | text = d.text ++ "\n\n![](" ++ af.name ++ ")\n\n" }
+
 buttons : Model -> Html Msg
 buttons model = case model.state of
     NormalState             -> viewNormalButtonBar model
@@ -270,6 +274,12 @@ viewAttachedFile showButtons idx af = div [ class "attached-file" ]
                     , button
                         [ class "attach-file-btn", onClick (DetachFile idx) ]
                         [ text "detach" ]
+                    , case (isImage af) of
+                        True ->
+                            button
+                                [ class "insert-image-btn", onClick (InsertImage af) ]
+                                [ text "insert" ]
+                        False -> text ""
                     ]
                 False -> []
             ) )
@@ -395,6 +405,8 @@ update ctx msg model = let data  = model.data
         , []
         )
     (AttachedFileNameMsg _, _) -> (model, Cmd.none, [])
+    (InsertImage _, EditState _) -> crash "not implemented"
+    (InsertImage af, _) -> ( model |> setData (insertImage af model.data), Cmd.none, [] )
 
 setData : Data -> Model -> Model
 setData data cc = { cc | data = data }
@@ -480,6 +492,9 @@ hasMaths s = (String.contains "$" s) || (String.contains "\\(" s) || (String.con
 
 isRemoteURL : String -> Bool
 isRemoteURL s = (String.startsWith "http:") s || (String.startsWith "https:" s)
+
+isImage : AttachedFile -> Bool
+isImage af = String.startsWith "image/" af.mimeType
 
 renderMaths : List (Html Msg) -> Html Msg
 renderMaths children = Html.node "may-contain-maths" [ class "maths" ] children
