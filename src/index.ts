@@ -7,33 +7,26 @@ require('./styles/main.scss');
 let elm = require('./Main.elm')
 
 require('./maths.ts')
+require('./attached_images.ts')
 require('./fonts.ts')
 
-import * as localforage from 'localforage';
 import * as sjcl        from 'sjcl';
+import * as storage     from './storage.ts';
 
 type ElmApp = any   // he he
 
 interface Context {
     app: ElmApp
-    storage: LocalForage
 }
 
 function init(app: ElmApp): Context {
     return {
         app: app,
-        storage: localforage,
     }
 }
 
-interface AttachedFile {
-    name: string,
-    hash: string,
-    mime_type: string,
-}
-
 async function process_get_card(ctx: Context, cardID: string) {
-    let card = await ctx.storage.getItem('card_' + cardID) as string
+    let card = await storage.getCard(cardID)
 
     if (card == null) {
         console.log("returning empty card at ", cardID)
@@ -46,20 +39,19 @@ async function process_get_card(ctx: Context, cardID: string) {
             children: [],
         })
     } else {
-        console.log("returning card at ", cardID, ": ", JSON.parse(card))
-        ctx.app.ports.gotCard.send(JSON.parse(card))
+        console.log("returning card at ", cardID, ": ", card)
+        ctx.app.ports.gotCard.send(card)
     }
 }
 
 async function process_save_card(ctx: Context, card: any) {
-    let id = card.id
-    if (!id) {
-        throw new Error("invalid card id - " + id)
+    if (!card.id) {
+        throw new Error("invalid card id - " + card.id)
     }
 
     console.log("saving card at ", card.id, " : ", card)
 
-    await ctx.storage.setItem('card_' + id, JSON.stringify(card))
+    await storage.saveCard(card)
 }
 
 function read_file(file: File): Promise<string> {
@@ -82,9 +74,9 @@ async function process_file_for_attach(ctx: Context, file: File) {
     let data_bits = sjcl.codec.base64.toBits(data_url.split(',')[1])
     let hash = sjcl.codec.base64.fromBits(sjcl.hash.sha256.hash(data_bits)).substring(0, 32)
 
-    await ctx.storage.setItem('file_' + hash, data_url)
+    await storage.saveFile(hash, data_url)
 
-    let af: AttachedFile = {
+    let af: storage.AttachedFile = {
         name: file.name,
         hash: hash,
         mime_type: file.type,
@@ -113,8 +105,12 @@ async function process_attach_file(ctx: Context) {
     file_input.click()
 }
 
-async function process_download_attached_file(ctx: Context, af: AttachedFile) {
-    let data_url = await ctx.storage.getItem('file_' + af.hash) as string
+async function process_download_attached_file(ctx: Context, af: storage.AttachedFile) {
+    let data_url = await storage.getFile(af.hash)
+    if (data_url == null) {
+        console.log('attached file ', af, ' is missing!')
+        return
+    }
 
     let download_el = document.createElement('a') as HTMLAnchorElement
     download_el.href = data_url
@@ -145,7 +141,7 @@ function main() {
             console.log('error while processing save_card request: ', err)
         })
     });
-    app.ports.downloadAttachedFile.subscribe((af: AttachedFile) => {
+    app.ports.downloadAttachedFile.subscribe((af: storage.AttachedFile) => {
         process_download_attached_file(ctx, af).then(() => {
         }).catch(err => {
             console.log('error while processing download_attached_file request fore ', af, ': ', err)
