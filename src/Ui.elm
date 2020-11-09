@@ -131,12 +131,17 @@ update msg model = case msg of
         in
             ( newState (PendingEdit newPath) model2, Cmd.none, actions2 )
 
-    PasteChild ins (oldPath, Move) ->
-        let
-            (model1, cmd1, actions1) = update (UnlinkCard oldPath) model
-        in let
-            (model2, _, actions2) = insertChildWithID ins (NE.head oldPath) model1
-        in  (model2, cmd1, actions1 ++ actions2)
+    PasteChild ins (oldPath, Move) -> case NE.tail oldPath |> List.head of
+        Nothing ->
+            ( setError UnlinkWithoutParent model, Cmd.none, [] )
+        Just oldParent ->
+            let
+                model1 = { model | cards = delChildFromCard oldParent (NE.head oldPath) model.cards }
+            in let
+                (model2, newPath, actions) = insertChildWithID ins (NE.head oldPath) model1
+            in case (NE.tail newPath |> List.head) == Just oldParent of
+                True -> ( model2, Cmd.none, actions ) -- new parent is same as old parent
+                False -> ( model2, Cmd.none, actions ++ (saveCard oldParent model2.cards) )
 
     PasteChild ins (oldPath, Copy) ->
        ( setError NotImplemented model, Cmd.none, [] )
