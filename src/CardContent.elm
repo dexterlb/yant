@@ -172,12 +172,16 @@ viewIndicators data = let indicatorElements = viewIndicatorElements data
         _  -> div [ class "indicators" ] indicatorElements
 
 viewIndicatorElements : Data -> List (Html Msg)
-viewIndicatorElements data = case data.calEvents of
-    [] -> []
-    _  -> [ indicator "indicator-cal-event" "item has a calendar event" ]
-          ++ (case (List.any Calendar.hasReminders data.calEvents) of
-                True  -> [ indicator "indicator-reminder" "item has a reminder" ]
-                False -> [])
+viewIndicatorElements data = 
+       (case data.calEvents of
+            [] -> []
+            _  -> [ indicator "indicator-cal-event" "item has a calendar event" ]
+                ++ (case (List.any Calendar.hasReminders data.calEvents) of
+                        True  -> [ indicator "indicator-reminder" "item has a reminder" ]
+                        False -> []))
+    ++ (case data.attachedFiles of
+            [] -> []
+            _  -> [ indicator "indicator-attached-file" "item has an attached file" ])
 
 insertImage : AttachedFile -> Data -> Data
 insertImage af d = { d | text = d.text ++ "\n\n![](" ++ af.name ++ ")\n\n" }
