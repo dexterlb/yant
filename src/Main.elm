@@ -98,11 +98,15 @@ performUiActions model actions = Cmd.batch <| List.map (performUiAction model) a
 
 performUiAction : Model -> Ui.Action -> Cmd Msg
 performUiAction model action = case action of
-    Ui.GetCard  id   -> Storage.getCard  <| Cards.encodeCardID id
+    Ui.GetCard  mode id -> Storage.getCard  <| JE.object
+        [ ("mode", Ui.encodeCardGetMode mode)
+        , ("id", Cards.encodeCardID id)
+        ]
     Ui.SaveCard card -> Storage.saveCard <| Cards.encodeCard   card
     Ui.RequestAttachedFile    -> Storage.attachFile ()
     Ui.RequestAttachedFileDownload af    -> Storage.downloadAttachedFile <| CardContent.encodeAttachedFile af
     Ui.RequestDataExport      -> Storage.exportData ()
+    Ui.RequestDataNuke        -> Storage.nukeData ()
 
 -- SUBSCRIPTIONS
 
@@ -110,7 +114,9 @@ performUiAction model action = case action of
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.batch
     [ Storage.gotCard (handleJson (UiInput << Ui.GotCard) Cards.decodeCard)
+    , Storage.missingCard (handleJson (UiInput << Ui.MissingCard) JD.string)
     , Storage.attachedFile (handleJson (UiInput << Ui.ReceivedAttachedFile) CardContent.decodeAttachedFile)
+    , Storage.reload (\_ -> UiInput Ui.Reload)
     ]
 
 handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg

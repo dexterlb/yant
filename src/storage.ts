@@ -2,7 +2,7 @@ export {
     AttachedFile,
     getFile, saveFile,
     getCard, saveCard,
-    exportData,
+    exportData, nukeAllData,
 }
 
 import * as localforage from 'localforage'
@@ -93,6 +93,10 @@ async function iterateAll(f: ((o: Object) => void)) {
 interface AllData {
     cards: Array<Card>,
     files: Array<FileData>,
+}
+
+async function nukeAllData() {
+    await localforage.clear()
 }
 
 async function getAllData(): Promise<AllData> {

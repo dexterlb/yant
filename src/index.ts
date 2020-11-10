@@ -25,19 +25,31 @@ function init(app: ElmApp): Context {
     }
 }
 
-async function process_get_card(ctx: Context, cardID: string) {
+interface GetCardRequest {
+    mode: "silent_fail" | "default_empty" | "explicit_fail";
+    id: string,
+}
+async function process_get_card(ctx: Context, req: GetCardRequest) {
+    let cardID = req.id
     let card = await storage.getCard(cardID)
 
     if (card == null) {
-        console.log("returning empty card at ", cardID)
-        ctx.app.ports.gotCard.send({
-            id: cardID,
-            content: {
-                text: "",
-                done: false,
-            },
-            children: [],
-        })
+        if (req.mode == 'default_empty' || cardID == 'root') {
+            console.log("returning empty card at ", cardID)
+            ctx.app.ports.gotCard.send({
+                id: cardID,
+                content: {
+                    text: "",
+                    done: false,
+                },
+                children: [],
+            })
+        } else {
+            console.log("card missing ", cardID)
+            if (req.mode == 'explicit_fail') {
+                ctx.app.ports.missingCard.send(cardID)
+            }
+        }
     } else {
         console.log("returning card at ", cardID, ": ", card)
         ctx.app.ports.gotCard.send(card)
@@ -122,15 +134,20 @@ async function process_export_data(ctx: Context) {
     await storage.exportData()
 }
 
+async function process_nuke_data(ctx: Context) {
+    await storage.nukeAllData()
+    ctx.app.ports.reload.send(null)
+}
+
 function main() {
     let app = elm.Elm.Main.init({ node: document.documentElement });
 
     let ctx = init(app)
 
-    app.ports.getCard.subscribe((cardID: any) => {
-        process_get_card(ctx, cardID as string).then(() => {
+    app.ports.getCard.subscribe((req: any) => {
+        process_get_card(ctx, req as GetCardRequest).then(() => {
         }).catch(err => {
-            console.log('error while processing get_card request for id', cardID, ': ', err)
+            console.log('error while processing get_card request', req, ': ', err)
         })
     });
     app.ports.saveCard.subscribe((card: any) => {
@@ -155,6 +172,12 @@ function main() {
         process_export_data(ctx).then(() => {
         }).catch(err => {
             console.log('error while processing export_data request: ', err)
+        })
+    });
+    app.ports.nukeData.subscribe(() => {
+        process_nuke_data(ctx).then(() => {
+        }).catch(err => {
+            console.log('error while processing nuke_data request: ', err)
         })
     });
 }

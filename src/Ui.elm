@@ -1,7 +1,7 @@
-module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg)
+module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg, encodeCardGetMode)
 
 import Html exposing (Html, div, text, button, textarea, input)
-import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked)
+import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, title)
 import Html.Events as HE
 import Color
 
@@ -13,6 +13,7 @@ import Dict as Dict exposing (Dict)
 import List.Nonempty as NE
 import Set exposing (Set)
 import Json.Decode as JD
+import Json.Encode as JE
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
@@ -75,19 +76,28 @@ type Msg
     | ClearError
 
     | ExportData
+    | NukeData
 
 type InputMsg
     = GotCard Card
+    | MissingCard CardID
+    | Reload
     | ReceivedAttachedFile CardContent.AttachedFile
 
 type Action
-    = GetCard CardID
+    = GetCard CardGetMode CardID
     | SaveCard Card
     | RequestAttachedFile
     | RequestAttachedFileDownload CardContent.AttachedFile
     | RequestDataExport
+    | RequestDataNuke
 
 type alias Actions = List Action
+
+type CardGetMode
+    = SilentFail
+    | ExplicitFail
+    | DefaultEmpty
 
 
 init : CardID -> (Model, Cmd m, Actions)
@@ -104,7 +114,7 @@ init rootCard =
             , selectedCard = Nothing
             }
     in let
-        (model1, actions) = syncCards model
+        (model1, actions) = syncCards DefaultEmpty model
     in
         (model1, Cmd.none, actions)
 
@@ -181,6 +191,9 @@ update msg model = case msg of
     ExportData ->
         ( model, Cmd.none, [ RequestDataExport ] )
 
+    NukeData ->
+        ( model, Cmd.none, [ RequestDataNuke ] )
+
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
     let (newCards, newPath) = insertChild id ins model.cards
@@ -249,6 +262,13 @@ pushMsg inMsg model = case inMsg of
                     False -> (model1, Cmd.none, [])
                 _ -> (model1, Cmd.none, [])
     ReceivedAttachedFile af -> selectedCardEvent (CardContent.ReceivedAttachedFile af) model
+    Reload ->
+        let (model1, actions) = reloadCards model
+        in
+            (model1, Cmd.none, actions)
+    MissingCard cardID ->
+        ( { model | cards = Cards.drop cardID model.cards }, Cmd.none, [] )
+
 
 
 
@@ -421,6 +441,9 @@ viewMainMenu model = div [ class "main-menu" ]
                 [ onClick ExportData ]
                 [ text "export data" ]
             , button
+                [ onClick NukeData, title "rm -rf /" ]
+                [ text "nuke data" ]
+            , button
                 [ onClick NotImplementedMsg ]
                 [ text "import data" ]
             ]
@@ -456,13 +479,19 @@ expand : CardPath -> Model -> (Model, Actions)
 expand path model =
     let
         model1 = { model | expanded = PT.put path () model.expanded }
-    in syncCards model1
+    in syncCards DefaultEmpty model1
 
 collapse : CardPath -> Model -> (Model, Actions)
 collapse path model =
     let
         model1 = { model | expanded = PT.drop path model.expanded }
-    in syncCards model1
+    in syncCards DefaultEmpty model1
+
+reloadCards : Model -> (Model, Actions)
+reloadCards model =
+    let
+        model1 = { model | selectedCard = Nothing, state = None }
+    in syncAllCards ExplicitFail model1
 
 newState : UserState -> Model -> Model
 newState state = updateState (\_ -> state)
@@ -518,11 +547,17 @@ delChildFromCard cardID childID cards =
         Just oldParent -> let parent = { oldParent | children = List.filter (\c -> c /= childID) oldParent.children } in
             Cards.add parent cards
 
-syncCards : Model -> (Model, Actions)
-syncCards m = (m, List.map GetCard (Set.toList <| missingCards m))
+syncAllCards : CardGetMode -> Model -> (Model, Actions)
+syncAllCards mode m = (m, List.map (GetCard mode) (Set.toList <| allCards m))
+
+syncCards : CardGetMode -> Model -> (Model, Actions)
+syncCards mode m = (m, List.map (GetCard mode) (Set.toList <| missingCards m))
 
 missingCards : Model -> Set CardID
 missingCards m = Set.diff (neededCards m) (Set.fromList <| Dict.keys m.cards)
+
+allCards : Model -> Set CardID
+allCards m = Set.fromList <| Dict.keys m.cards
 
 neededCards : Model -> Set CardID
 neededCards m = neededCardsFrom (NE.fromElement m.rootCard) m
@@ -602,3 +637,9 @@ fetch k d =
             v
 
         Nothing -> crash "item not in dict"
+
+encodeCardGetMode : CardGetMode -> JE.Value
+encodeCardGetMode mode = case mode of
+                            SilentFail -> JE.string "silent_fail"
+                            ExplicitFail -> JE.string "explicit_fail"
+                            DefaultEmpty -> JE.string "default_empty"

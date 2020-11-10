@@ -1,5 +1,5 @@
 module Cards exposing
-    ( CardID, CardPath, Cards, noCards, Card, add, update
+    ( CardID, CardPath, Cards, noCards, Card, add, update, drop
     , encodeCardID, decodeCard, encodeCard
     )
 
@@ -25,6 +25,9 @@ noCards = Dict.empty
 
 add : Card -> Cards -> Cards
 add card cards = Dict.insert card.id card cards
+
+drop : CardID -> Cards -> Cards
+drop cardID cards = Dict.remove cardID cards
 
 update : CardID -> (Card -> Card) -> Cards -> Cards
 update id f cards = Dict.update id (Maybe.map f) cards
