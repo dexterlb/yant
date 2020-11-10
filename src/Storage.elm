@@ -13,6 +13,7 @@ port attachedFile           : (JE.Value -> msg) -> Sub msg
 port downloadAttachedFile   : JE.Value -> Cmd msg
 
 port exportData : () -> Cmd msg
+port importData : () -> Cmd msg
 port nukeData   : () -> Cmd msg
 
 port reload     : (JE.Value -> msg) -> Sub msg

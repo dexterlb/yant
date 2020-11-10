@@ -2,7 +2,7 @@ export {
     AttachedFile,
     getFile, saveFile,
     getCard, saveCard,
-    exportData, nukeAllData,
+    exportData, nukeAllData, importData
 }
 
 import * as localforage from 'localforage'
@@ -116,8 +116,49 @@ async function getAllData(): Promise<AllData> {
     return result
 }
 
+async function saveAllData(data: AllData) {
+    await nukeAllData()
+    for (let card of data.cards) {
+        await saveCard(card)
+    }
+    for (let file of data.files) {
+        await saveFile(file.hash, file.data_url)
+    }
+}
+
+async function browseForFiles(): Promise< FileList > {
+    let file_input = document.createElement('input') as HTMLInputElement;
+    file_input.type = 'file';
+
+    let result = new Promise<FileList>((ok, err) => {
+        file_input.onchange = e => {
+            let target = e.target as HTMLInputElement;
+            if (!target.files) {
+                return
+            }
+
+            ok(target.files)
+        }
+    })
+
+    file_input.click()
+
+    return result
+}
+
 async function exportData() {
     let data = await getAllData()
     let f = new Blob([JSON.stringify(data)], {type: "text/plain;charset=utf-8"})
     FileSaver.saveAs(f, "data.json")
+}
+
+async function importData() {
+    let files = await browseForFiles()
+    if (!files) {
+        console.log('no files selected for import')
+        return
+    }
+
+    let data = JSON.parse(await files[0].text()) as AllData
+    await saveAllData(data)
 }

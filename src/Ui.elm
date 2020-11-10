@@ -76,6 +76,7 @@ type Msg
     | ClearError
 
     | ExportData
+    | ImportData
     | NukeData
 
 type InputMsg
@@ -90,6 +91,7 @@ type Action
     | RequestAttachedFile
     | RequestAttachedFileDownload CardContent.AttachedFile
     | RequestDataExport
+    | RequestDataImport
     | RequestDataNuke
 
 type alias Actions = List Action
@@ -190,6 +192,9 @@ update msg model = case msg of
 
     ExportData ->
         ( model, Cmd.none, [ RequestDataExport ] )
+
+    ImportData ->
+        ( model, Cmd.none, [ RequestDataImport ] )
 
     NukeData ->
         ( model, Cmd.none, [ RequestDataNuke ] )
@@ -444,7 +449,7 @@ viewMainMenu model = div [ class "main-menu" ]
                 [ onClick NukeData, title "rm -rf /" ]
                 [ text "nuke data" ]
             , button
-                [ onClick NotImplementedMsg ]
+                [ onClick ImportData ]
                 [ text "import data" ]
             ]
         ]
@@ -491,7 +496,9 @@ reloadCards : Model -> (Model, Actions)
 reloadCards model =
     let
         model1 = { model | selectedCard = Nothing, state = None }
-    in syncAllCards ExplicitFail model1
+    in
+        -- fixme (low priority) - this causes us to store some unneeded empty cards in RAM
+        syncAllCards DefaultEmpty model1
 
 newState : UserState -> Model -> Model
 newState state = updateState (\_ -> state)

@@ -130,6 +130,11 @@ async function process_download_attached_file(ctx: Context, af: storage.Attached
     download_el.click()
 }
 
+async function process_import_data(ctx: Context) {
+    await storage.importData()
+    ctx.app.ports.reload.send(null)
+}
+
 async function process_export_data(ctx: Context) {
     await storage.exportData()
 }
@@ -172,6 +177,12 @@ function main() {
         process_export_data(ctx).then(() => {
         }).catch(err => {
             console.log('error while processing export_data request: ', err)
+        })
+    });
+    app.ports.importData.subscribe(() => {
+        process_import_data(ctx).then(() => {
+        }).catch(err => {
+            console.log('error while processing import_data request: ', err)
         })
     });
     app.ports.nukeData.subscribe(() => {

@@ -106,6 +106,7 @@ performUiAction model action = case action of
     Ui.RequestAttachedFile    -> Storage.attachFile ()
     Ui.RequestAttachedFileDownload af    -> Storage.downloadAttachedFile <| CardContent.encodeAttachedFile af
     Ui.RequestDataExport      -> Storage.exportData ()
+    Ui.RequestDataImport      -> Storage.importData ()
     Ui.RequestDataNuke        -> Storage.nukeData ()
 
 -- SUBSCRIPTIONS
