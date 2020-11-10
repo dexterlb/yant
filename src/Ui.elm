@@ -74,6 +74,8 @@ type Msg
     | PasteChild      Insertion Clipboard
     | ClearError
 
+    | ExportData
+
 type InputMsg
     = GotCard Card
     | ReceivedAttachedFile CardContent.AttachedFile
@@ -83,6 +85,7 @@ type Action
     | SaveCard Card
     | RequestAttachedFile
     | RequestAttachedFileDownload CardContent.AttachedFile
+    | RequestDataExport
 
 type alias Actions = List Action
 
@@ -170,10 +173,13 @@ update msg model = case msg of
                     |> processContentResult model path
 
     NotImplementedMsg ->
-       ( setError NotImplemented model, Cmd.none, [] )
+        ( setError NotImplemented model, Cmd.none, [] )
 
     ClearError ->
-       ( clearError model, Cmd.none, [] )
+        ( clearError model, Cmd.none, [] )
+
+    ExportData ->
+        ( model, Cmd.none, [ RequestDataExport ] )
 
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
@@ -412,7 +418,7 @@ viewMainMenu model = div [ class "main-menu" ]
     [ div [ class "button-bar" ]
         [ div [ class "button-group", class "button-group-general" ]
             [ button
-                [ onClick NotImplementedMsg ]
+                [ onClick ExportData ]
                 [ text "export data" ]
             , button
                 [ onClick NotImplementedMsg ]

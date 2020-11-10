@@ -102,6 +102,7 @@ performUiAction model action = case action of
     Ui.SaveCard card -> Storage.saveCard <| Cards.encodeCard   card
     Ui.RequestAttachedFile    -> Storage.attachFile ()
     Ui.RequestAttachedFileDownload af    -> Storage.downloadAttachedFile <| CardContent.encodeAttachedFile af
+    Ui.RequestDataExport      -> Storage.exportData ()
 
 -- SUBSCRIPTIONS
 

@@ -118,6 +118,10 @@ async function process_download_attached_file(ctx: Context, af: storage.Attached
     download_el.click()
 }
 
+async function process_export_data(ctx: Context) {
+    await storage.exportData()
+}
+
 function main() {
     let app = elm.Elm.Main.init({ node: document.documentElement });
 
@@ -145,6 +149,12 @@ function main() {
         process_download_attached_file(ctx, af).then(() => {
         }).catch(err => {
             console.log('error while processing download_attached_file request fore ', af, ': ', err)
+        })
+    });
+    app.ports.exportData.subscribe(() => {
+        process_export_data(ctx).then(() => {
+        }).catch(err => {
+            console.log('error while processing export_data request: ', err)
         })
     });
 }

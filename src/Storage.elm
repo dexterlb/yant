@@ -10,3 +10,5 @@ port saveCard   : JE.Value -> Cmd msg
 port attachFile             : () -> Cmd msg
 port attachedFile           : (JE.Value -> msg) -> Sub msg
 port downloadAttachedFile   : JE.Value -> Cmd msg
+
+port exportData : () -> Cmd msg
