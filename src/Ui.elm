@@ -257,15 +257,18 @@ pushMsg : InputMsg -> Model -> ( Model, Cmd Msg, Actions )
 pushMsg inMsg model = case inMsg of
     GotCard card ->
         let model1 = { model | cards = Cards.add card model.cards }
+        in let (model2, actions2) = case isExpandedAnywhere model card.id of
+                                        True -> syncSpecificCards DefaultEmpty (Set.fromList card.children) model1
+                                        False -> (model1, [])
         in
-            case model1.state of
+            case model2.state of
                 PendingEdit path -> case (NE.head path) == card.id of
-                    True -> let ( model3, cmd3, actions3) = update (SelectCard path) model1
+                    True -> let ( model3, cmd3, actions3) = update (SelectCard path) model2
                             in let
                                 ( model4, cmd4, actions4 ) = selectedCardEvent CardContent.BeginEdit model3
-                            in (model4, Cmd.batch [ cmd3, cmd4 ], actions4)
-                    False -> (model1, Cmd.none, [])
-                _ -> (model1, Cmd.none, [])
+                            in (model4, Cmd.batch [ cmd3, cmd4 ], actions2 ++ actions3 ++ actions4)
+                    False -> (model2, Cmd.none, [])
+                _ -> (model2, Cmd.none, actions2)
     ReceivedAttachedFile af -> selectedCardEvent (CardContent.ReceivedAttachedFile af) model
     Reload ->
         let (model1, actions) = reloadCards model
@@ -480,6 +483,10 @@ view model =
 isExpanded : Model -> CardPath -> Bool
 isExpanded model path = PT.member path model.expanded
 
+isExpandedAnywhere : Model -> CardID -> Bool
+isExpandedAnywhere model id = Dict.keys model.expanded
+    |> List.any (\p -> List.any (\x -> x == id) p)
+
 expand : CardPath -> Model -> (Model, Actions)
 expand path model =
     let
@@ -497,8 +504,7 @@ reloadCards model =
     let
         model1 = { model | selectedCard = Nothing, state = None }
     in
-        -- fixme (low priority) - this causes us to store some unneeded empty cards in RAM
-        syncAllCards DefaultEmpty model1
+        syncAllCards ExplicitFail model1
 
 newState : UserState -> Model -> Model
 newState state = updateState (\_ -> state)
@@ -555,10 +561,13 @@ delChildFromCard cardID childID cards =
             Cards.add parent cards
 
 syncAllCards : CardGetMode -> Model -> (Model, Actions)
-syncAllCards mode m = (m, List.map (GetCard mode) (Set.toList <| allCards m))
+syncAllCards mode m = syncSpecificCards mode (allCards m) m
 
 syncCards : CardGetMode -> Model -> (Model, Actions)
-syncCards mode m = (m, List.map (GetCard mode) (Set.toList <| missingCards m))
+syncCards mode m = syncSpecificCards mode (missingCards m) m
+
+syncSpecificCards : CardGetMode -> Set CardID -> Model -> (Model, Actions)
+syncSpecificCards mode cards m = (m, List.map (GetCard mode) (Set.toList <| cards))
 
 missingCards : Model -> Set CardID
 missingCards m = Set.diff (neededCards m) (Set.fromList <| Dict.keys m.cards)

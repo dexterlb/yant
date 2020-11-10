@@ -128,4 +128,8 @@ indicator className textContent =
 -- here be dragons
 crash : String -> a
 crash s = Debug.todo s
+--- crash = makeUndefined
+
+makeUndefined : a -> b
+makeUndefined a = (\_ -> makeUndefined a) ()
 
