@@ -79,6 +79,8 @@ type Msg
     | ImportData
     | NukeData
 
+    | ChangeSettings (Settings -> Settings)
+
 type InputMsg
     = GotCard Card
     | MissingCard CardID
@@ -199,6 +201,9 @@ update msg model = case msg of
     NukeData ->
         ( model, Cmd.none, [ RequestDataNuke ] )
 
+    ChangeSettings f ->
+        ( { model | settings = f model.settings }, Cmd.none, [] )
+
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
     let (newCards, newPath) = insertChild id ins model.cards
@@ -284,16 +289,20 @@ pushMsg inMsg model = case inMsg of
 viewCard : Model -> CardPath -> Cards -> Html Msg
 viewCard model path cards = case Dict.get (NE.head path) cards of
     Nothing   -> div [ class "card", class "waiting" ] [ text "waiting for card" ]
-    Just card -> case isExpanded model path of
-        True ->
+    Just card -> case (isExpanded model path, isVisible model card) of
+        (_, False) -> div [ class "hidden-card" ] []
+        (True, True) ->
             div [ class "card", class "expanded" ]
                 [ viewCardBody model path card
                 , viewCardChildren model path cards card.children
                 ]
-        False ->
+        (False, True) ->
             div [ class "card", class "collapsed" ]
                 [ viewCardBody model path card
                 ]
+
+isVisible : Model -> Card -> Bool
+isVisible model card = (not model.settings.hideDone) || (not card.content.done)
 
 viewCardChildren : Model -> CardPath -> Cards -> List CardID -> Html Msg
 viewCardChildren model path cards childIDs =
@@ -454,6 +463,15 @@ viewMainMenu model = div [ class "main-menu" ]
             , button
                 [ onClick ImportData ]
                 [ text "import data" ]
+            , case model.settings.hideDone of
+                True ->
+                    button
+                        [ onClick (ChangeSettings (\s -> { s | hideDone = False })) ]
+                        [ text "show done" ]
+                False ->
+                    button
+                        [ onClick (ChangeSettings (\s -> { s | hideDone = True })) ]
+                        [ text "hide done" ]
             ]
         ]
     ]
