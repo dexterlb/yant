@@ -12,6 +12,7 @@ import Calendar exposing (..)
 import Calendar.Timezones as Timezones exposing (Timezone)
 
 import Utils exposing (..)
+import CommonComponents exposing (viewTZPicker)
 
 type alias Model =
     { event: Event
@@ -316,30 +317,8 @@ viewDTPicker dt f = div
     , input
         [ class "time", type_ "time", value (timeToValue dt), step "1", required True
         , HE.onInput (\v -> Evil (f (parseTimePart v dt)))] []
-    , viewTZPicker dt.timezone (\v -> f { dt | timezone = v })
+    , viewTZPicker dt.timezone (\v -> Evil (f { dt | timezone = v }))
     ]
-
-viewTZPicker : Timezone -> (Timezone -> Model -> Model) -> Html Msg
-viewTZPicker tz f =
-    select
-        [ class "timezone"
-        , HE.onInput (\tzn -> case Timezones.fromString tzn of
-            Just newTz -> Evil (f newTz)
-            Nothing    -> Evil (f tz))
-        ]
-        (List.map (tzOptionGroup tz) (Timezones.grouped Timezones.all))
-
-tzOptionGroup : Timezone -> (String, List Timezone) -> Html Msg
-tzOptionGroup selectedTZ (groupName, tzs) =
-    optgroup
-        [ attribute "label" groupName ]
-        (List.map (tzOption selectedTZ) tzs)
-
-tzOption : Timezone -> Timezone -> Html Msg
-tzOption selectedTZ tz = let tzn = Timezones.toString tz in
-    case tzn == Timezones.toString selectedTZ of
-        True  -> option [ value tzn, selected True  ] [ text tzn ]
-        False -> option [ value tzn, selected False ] [ text tzn ]
 
 parseKind : String -> Kind -> Kind
 parseKind s k = Maybe.withDefault k (kindFromString s)
