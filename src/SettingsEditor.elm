@@ -1,7 +1,7 @@
 module SettingsEditor exposing (Model, Msg, init, update, view, getSettings)
 
 import Settings as Settings exposing (Settings)
-import Html exposing (Html)
+import Html as HI exposing (Html)
 import Utils exposing (..)
 
 type alias Model =
@@ -22,4 +22,5 @@ update msg model = case msg of
     Evil f -> (f model, Cmd.none)
 
 view : Model -> Html Msg
-view = Utils.crash "not implemented"
+view model = HI.div []
+    [ HI.text "this is the settings editor" ]

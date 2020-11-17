@@ -83,6 +83,9 @@ type Msg
 
     | ChangeSettings (Settings -> Settings)
     | SettingsEditorMsg SettingsEditor.Msg
+    | SaveSettings
+    | ShowSettings
+    | CancelSettings
 
 type InputMsg
     = GotCard Card
@@ -218,6 +221,19 @@ update msg model = case msg of
                     , []
                     )
             Nothing -> (model, Cmd.none, [])
+
+    SaveSettings ->
+        case model.settingsEditor of
+            Just sed ->
+                ( { model | settings = SettingsEditor.getSettings sed, settingsEditor = Nothing }
+                , Cmd.none, [] )
+            Nothing -> ( model, Cmd.none, [] )
+
+    CancelSettings -> ( { model | settingsEditor = Nothing }, Cmd.none, [] )
+
+    ShowSettings ->
+        ( { model | settingsEditor = Just (SettingsEditor.init model.settings) }
+        , Cmd.none, [] )
 
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
@@ -465,6 +481,21 @@ viewChildlessCardControls model path = div [ class "controls" ]
         ]
     ]
 
+viewSettingsEditor : Model -> SettingsEditor.Model -> Html Msg
+viewSettingsEditor model sed = div [ class "settings-editor-view" ]
+    [ div [ class "button-bar" ]
+        [ div [ class "button-group", class "button-group-general" ]
+            [ button
+                [ class "save-btn", onClick SaveSettings ]
+                [ text "save" ]
+            , button
+                [ class "cancel-btn", onClick CancelSettings ]
+                [ text "cancel" ]
+            ]
+        ]
+    , SettingsEditor.view sed |> Html.map SettingsEditorMsg
+    ]
+
 viewMainMenu : Model -> Html Msg
 viewMainMenu model = div [ class "main-menu" ]
     [ div [ class "button-bar" ]
@@ -478,6 +509,9 @@ viewMainMenu model = div [ class "main-menu" ]
             , button
                 [ onClick ImportData ]
                 [ text "import data" ]
+            , button
+                [ onClick ShowSettings ]
+                [ text "settings" ]
             , case model.settings.hideDone of
                 True ->
                     button
@@ -491,25 +525,29 @@ viewMainMenu model = div [ class "main-menu" ]
         ]
     ]
 
-viewError : Maybe ErrorMessage -> List (Html Msg)
-viewError error = case error of
-    Nothing -> []
-    Just err -> [div
+viewError : ErrorMessage -> Html Msg
+viewError err =
+    div
         [ class "error-box", onClick ClearError ]
         ( case err of
             NotImplemented -> [text "not implemented"]
             UnlinkWithoutParent -> [ text "trying to unlink item without parent" ]
-        )]
+        )
 
 view : Model -> Html Msg
 view model =
     div []
-        ( (viewError model.error) ++
-        [ viewMainMenu model
-        , div [ class "cards" ]
-            [ viewCard model (NE.fromElement model.rootCard) model.cards
-            ]
-        ])
+        (case model.error of
+            Just err -> [ viewError err ]
+            Nothing ->
+                case model.settingsEditor of
+                    Just sed -> [ viewSettingsEditor model sed ]
+                    Nothing  ->
+                        [ viewMainMenu model
+                        , div [ class "cards" ]
+                            [ viewCard model (NE.fromElement model.rootCard) model.cards
+                            ]
+                        ])
 
 -- Helpers
 
