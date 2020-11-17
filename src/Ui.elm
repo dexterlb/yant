@@ -20,6 +20,7 @@ import PathTree as PT exposing (PathTree)
 import Utils as Utils exposing (onClick, crash)
 import CardContent as CardContent
 import Settings as Settings exposing (Settings)
+import SettingsEditor
 
 
 type alias Model =
@@ -29,6 +30,7 @@ type alias Model =
     , expanded: PathTree ()
     , error: Maybe ErrorMessage
     , settings: Settings
+    , settingsEditor: Maybe SettingsEditor.Model
     , selectedCard : Maybe (CardContent.Model, CardPath)
     , clipboard : Maybe Clipboard
     }
@@ -80,6 +82,7 @@ type Msg
     | NukeData
 
     | ChangeSettings (Settings -> Settings)
+    | SettingsEditorMsg SettingsEditor.Msg
 
 type InputMsg
     = GotCard Card
@@ -114,6 +117,7 @@ init rootCard =
             , expanded = PT.empty
             , error = Nothing
             , settings = Settings.default
+            , settingsEditor = Nothing
             , clipboard = Nothing
             , selectedCard = Nothing
             }
@@ -203,6 +207,17 @@ update msg model = case msg of
 
     ChangeSettings f ->
         ( { model | settings = f model.settings }, Cmd.none, [] )
+
+    SettingsEditorMsg smsg ->
+        case model.settingsEditor of
+            Just sed ->
+                let (newEditor, scmd) = SettingsEditor.update smsg sed
+                in
+                    ( { model | settingsEditor = Just newEditor }
+                    , Cmd.map SettingsEditorMsg scmd
+                    , []
+                    )
+            Nothing -> (model, Cmd.none, [])
 
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
