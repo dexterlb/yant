@@ -66,6 +66,12 @@ async function process_save_card(ctx: Context, card: any) {
     await storage.saveCard(card)
 }
 
+async function process_save_settings(ctx: Context, settings: any) {
+    console.log("saving settings: ", settings)
+
+    await storage.saveSettings(settings)
+}
+
 function read_file(file: File): Promise<string> {
     let reader = new FileReader()
     let result = new Promise<string>((ok, err) => {
@@ -159,6 +165,12 @@ function main() {
         process_save_card(ctx, card).then(() => {
         }).catch(err => {
             console.log('error while processing save_card request for ', card, ': ', err)
+        })
+    });
+    app.ports.saveSettings.subscribe((settings: any) => {
+        process_save_settings(ctx, settings).then(() => {
+        }).catch(err => {
+            console.log('error while processing save_settings request for ', settings, ': ', err)
         })
     });
     app.ports.attachFile.subscribe(() => {

@@ -2,6 +2,7 @@ export {
     AttachedFile,
     getFile, saveFile,
     getCard, saveCard,
+    getSettings, saveSettings,
     exportData, nukeAllData, importData
 }
 
@@ -31,6 +32,11 @@ interface Card {
     children: Array<string>,
 }
 
+interface Settings {
+    hide_done: boolean,
+    default_timezone: any,
+}
+
 interface CardObject {
     t: 'card'
     card: Card
@@ -41,7 +47,25 @@ interface FileObject {
     file: FileData
 }
 
-type Object = CardObject | FileObject
+interface SettingsObject {
+    t: 'settings'
+    settings: Settings
+}
+
+type Object = CardObject | FileObject | SettingsObject
+
+async function saveSettings(settings: Settings) {
+    await localforage.setItem('settings', JSON.stringify(settings))
+}
+
+async function getSettings(): Promise<Settings | null> {
+    let data = await localforage.getItem('settings') as (string | null)
+    if (data == null) {
+        return null
+    }
+
+    return JSON.parse(data) as Settings
+}
 
 async function saveCard(card: Card) {
     await localforage.setItem('card_' + card.id, JSON.stringify(card))
@@ -93,6 +117,7 @@ async function iterateAll(f: ((o: Object) => void)) {
 interface AllData {
     cards: Array<Card>,
     files: Array<FileData>,
+    settings: Settings,
 }
 
 async function nukeAllData() {
@@ -100,7 +125,11 @@ async function nukeAllData() {
 }
 
 async function getAllData(): Promise<AllData> {
-    let result: AllData = { cards: [], files: [] }
+    let result: AllData = {
+        cards: [],
+        files: [],
+        settings: await must(getSettings()),
+    }
 
     await iterateAll(o => {
         switch (o.t) {
@@ -124,6 +153,7 @@ async function saveAllData(data: AllData) {
     for (let file of data.files) {
         await saveFile(file.hash, file.data_url)
     }
+    await saveSettings(data.settings)
 }
 
 async function browseForFiles(): Promise< FileList > {
@@ -161,4 +191,13 @@ async function importData() {
 
     let data = JSON.parse(await files[0].text()) as AllData
     await saveAllData(data)
+}
+
+async function must<T>(x: Promise<T | null>): Promise<T> {
+    let xv = await x;
+    if (xv == null) {
+        throw 'must not be null';
+    }
+
+    return xv
 }

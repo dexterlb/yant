@@ -102,6 +102,8 @@ type Action
     | RequestDataImport
     | RequestDataNuke
 
+    | RequestSettingsSave Settings
+
 type alias Actions = List Action
 
 type CardGetMode
@@ -208,8 +210,8 @@ update msg model = case msg of
     NukeData ->
         ( model, Cmd.none, [ RequestDataNuke ] )
 
-    ChangeSettings f ->
-        ( { model | settings = f model.settings }, Cmd.none, [] )
+    ChangeSettings f -> let settings = f model.settings in
+        ( { model | settings = settings }, Cmd.none, [ RequestSettingsSave settings ] )
 
     SettingsEditorMsg smsg ->
         case model.settingsEditor of
@@ -225,8 +227,9 @@ update msg model = case msg of
     SaveSettings ->
         case model.settingsEditor of
             Just sed ->
-                ( { model | settings = SettingsEditor.getSettings sed, settingsEditor = Nothing }
-                , Cmd.none, [] )
+                let (model1, cmd1, actions1) = update (ChangeSettings (\_ -> SettingsEditor.getSettings sed)) model
+                in ( { model1 | settingsEditor = Nothing }, cmd1, actions1 )
+
             Nothing -> ( model, Cmd.none, [] )
 
     CancelSettings -> ( { model | settingsEditor = Nothing }, Cmd.none, [] )

@@ -17,6 +17,7 @@ import Ui
 import Storage
 import Cards
 import CardContent
+import Settings
 import Utils exposing (..)
 
 
@@ -103,7 +104,8 @@ performUiAction model action = case action of
         , ("id", Cards.encodeCardID id)
         ]
     Ui.SaveCard card -> Storage.saveCard <| Cards.encodeCard   card
-    Ui.RequestAttachedFile    -> Storage.attachFile ()
+    Ui.RequestSettingsSave settings      -> Storage.saveSettings <| Settings.encode settings
+    Ui.RequestAttachedFile               -> Storage.attachFile ()
     Ui.RequestAttachedFileDownload af    -> Storage.downloadAttachedFile <| CardContent.encodeAttachedFile af
     Ui.RequestDataExport      -> Storage.exportData ()
     Ui.RequestDataImport      -> Storage.importData ()
