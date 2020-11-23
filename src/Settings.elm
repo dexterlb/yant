@@ -22,3 +22,8 @@ encode s = JE.object
     [ ( "default_timezone", Timezones.encode s.defaultTimezone )
     , ( "hide_done", JE.bool s.hideDone )
     ]
+
+decode : JD.Decoder Settings
+decode = JD.succeed Settings
+    |> JDP.optional "default_timezone" Timezones.decode     Timezones.default
+    |> JDP.optional "hide_done"        JD.bool              False

@@ -150,8 +150,12 @@ async function process_nuke_data(ctx: Context) {
     ctx.app.ports.reload.send(null)
 }
 
-function main() {
-    let app = elm.Elm.Main.init({ node: document.documentElement });
+async function main() {
+    let flags = {
+        settings: await storage.getSettings(),
+    }
+
+    let app = elm.Elm.Main.init({ node: document.documentElement, flags: flags });
 
     let ctx = init(app)
 

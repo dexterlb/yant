@@ -1,4 +1,4 @@
-module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg, encodeCardGetMode)
+module Ui exposing (Model, Msg, init, update, view, InputMsg(..), Action(..), Actions, pushMsg, encodeCardGetMode, Flags, decodeFlags)
 
 import Html exposing (Html, div, text, button, textarea, input)
 import Html.Attributes exposing (class, value, placeholder, style, disabled, type_, checked, title)
@@ -14,6 +14,7 @@ import List.Nonempty as NE
 import Set exposing (Set)
 import Json.Decode as JD
 import Json.Encode as JE
+import Json.Decode.Pipeline as JDP
 
 import Cards as Cards exposing (Cards, Card, CardID, CardPath, noCards)
 import PathTree as PT exposing (PathTree)
@@ -33,6 +34,10 @@ type alias Model =
     , settingsEditor: Maybe SettingsEditor.Model
     , selectedCard : Maybe (CardContent.Model, CardPath)
     , clipboard : Maybe Clipboard
+    }
+
+type alias Flags =
+    { settings: Settings
     }
 
 type alias Clipboard = (CardPath, ClipboardState)
@@ -90,6 +95,7 @@ type Msg
 type InputMsg
     = GotCard Card
     | MissingCard CardID
+    | GotSettings Settings
     | Reload
     | ReceivedAttachedFile CardContent.AttachedFile
 
@@ -112,8 +118,8 @@ type CardGetMode
     | DefaultEmpty
 
 
-init : CardID -> (Model, Cmd m, Actions)
-init rootCard =
+init : Maybe Flags -> CardID -> (Model, Cmd m, Actions)
+init mflags rootCard =
     let
         model =
             { cards = noCards
@@ -127,9 +133,13 @@ init rootCard =
             , selectedCard = Nothing
             }
     in let
-        (model1, actions) = syncCards DefaultEmpty model
+        model1 = case mflags of
+            Nothing -> model
+            Just flags -> { model | settings = flags.settings }
+    in let
+        (model2, actions) = syncCards DefaultEmpty model1
     in
-        (model1, Cmd.none, actions)
+        (model2, Cmd.none, actions)
 
 update : Msg -> Model -> ( Model, Cmd Msg, Actions )
 update msg model = case msg of
@@ -308,6 +318,7 @@ pushMsg inMsg model = case inMsg of
                             in (model4, Cmd.batch [ cmd3, cmd4 ], actions2 ++ actions3 ++ actions4)
                     False -> (model2, Cmd.none, [])
                 _ -> (model2, Cmd.none, actions2)
+    GotSettings settings -> ( { model | settings = settings }, Cmd.none, [] )
     ReceivedAttachedFile af -> selectedCardEvent (CardContent.ReceivedAttachedFile af) model
     Reload ->
         let (model1, actions) = reloadCards model
@@ -733,3 +744,7 @@ encodeCardGetMode mode = case mode of
                             SilentFail -> JE.string "silent_fail"
                             ExplicitFail -> JE.string "explicit_fail"
                             DefaultEmpty -> JE.string "default_empty"
+
+decodeFlags : JD.Decoder Flags
+decodeFlags = JD.succeed Flags
+    |> JDP.optional "settings" Settings.decode Settings.default

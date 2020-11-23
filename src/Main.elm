@@ -42,7 +42,7 @@ type alias Model =
 
 
 init : JE.Value -> Url -> Key -> ( Model, Cmd Msg )
-init _ url key = let (ui, cmd, actions) = Ui.init "root" in
+init flags url key = let (ui, cmd, actions) = Ui.init (processJsonFlags flags) "root" in
     let model = emptyModel url key ui
         in (model, Cmd.batch [cmd, performUiActions model actions])
 
@@ -133,3 +133,10 @@ view : Model -> Document Msg
 view model = Document
     "notes"
     [ Html.map UiMsg <| Ui.view model.ui ]
+
+-- Flags
+
+processJsonFlags : JE.Value -> Maybe Ui.Flags
+processJsonFlags val = case JD.decodeValue Ui.decodeFlags val of
+    Ok flags -> Just flags
+    Err _    -> Nothing
