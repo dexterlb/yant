@@ -18,4 +18,7 @@ port exportData : () -> Cmd msg
 port importData : () -> Cmd msg
 port nukeData   : () -> Cmd msg
 
+port syncNow    : () -> Cmd msg
+port syncStatus : (JE.Value -> msg) -> Sub msg
+
 port reload     : (JE.Value -> msg) -> Sub msg

@@ -110,6 +110,7 @@ performUiAction model action = case action of
     Ui.RequestDataExport      -> Storage.exportData ()
     Ui.RequestDataImport      -> Storage.importData ()
     Ui.RequestDataNuke        -> Storage.nukeData ()
+    Ui.RequestSync            -> Storage.syncNow ()
 
 -- SUBSCRIPTIONS
 
@@ -120,6 +121,7 @@ subscriptions _ = Sub.batch
     , Storage.missingCard (handleJson (UiInput << Ui.MissingCard) JD.string)
     , Storage.attachedFile (handleJson (UiInput << Ui.ReceivedAttachedFile) CardContent.decodeAttachedFile)
     , Storage.reload (\_ -> UiInput Ui.Reload)
+    , Storage.syncStatus (handleJson (UiInput << Ui.GotSyncStatus) Ui.decodeSyncStatus)
     ]
 
 handleJson : (a -> Msg) -> JD.Decoder a -> JE.Value -> Msg

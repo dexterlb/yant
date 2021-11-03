@@ -34,6 +34,7 @@ type alias Model =
     , settingsEditor: Maybe SettingsEditor.Model
     , selectedCard : Maybe (CardContent.Model, CardPath)
     , clipboard : Maybe Clipboard
+    , isSyncing : Bool
     }
 
 type alias Flags =
@@ -45,6 +46,7 @@ type alias Clipboard = (CardPath, ClipboardState)
 type ErrorMessage
     = NotImplemented
     | UnlinkWithoutParent
+    | SyncErrorMsg String
 
 type ClipboardState
     = Move
@@ -92,12 +94,15 @@ type Msg
     | ShowSettings
     | CancelSettings
 
+    | SyncNow
+
 type InputMsg
     = GotCard Card
     | MissingCard CardID
     | GotSettings Settings
     | Reload
     | ReceivedAttachedFile CardContent.AttachedFile
+    | GotSyncStatus SyncStatus
 
 type Action
     = GetCard CardGetMode CardID
@@ -109,6 +114,11 @@ type Action
     | RequestDataNuke
 
     | RequestSettingsSave Settings
+    | RequestSync
+
+type SyncStatus
+    = SyncSuccess
+    | SyncError String
 
 type alias Actions = List Action
 
@@ -131,6 +141,7 @@ init mflags rootCard =
             , settingsEditor = Nothing
             , clipboard = Nothing
             , selectedCard = Nothing
+            , isSyncing = False
             }
     in let
         model1 = case mflags of
@@ -248,6 +259,9 @@ update msg model = case msg of
         ( { model | settingsEditor = Just (SettingsEditor.init model.settings) }
         , Cmd.none, [] )
 
+    SyncNow ->
+        ( { model | isSyncing = True }, Cmd.none, [ RequestSync ] )
+
 insertChildWithID : Insertion -> CardID -> Model -> (Model, CardPath, Actions)
 insertChildWithID ins id model =
     let (newCards, newPath) = insertChild id ins model.cards
@@ -326,6 +340,11 @@ pushMsg inMsg model = case inMsg of
             (model1, Cmd.none, actions)
     MissingCard cardID ->
         ( { model | cards = Cards.drop cardID model.cards }, Cmd.none, [] )
+
+    GotSyncStatus SyncSuccess ->
+        ( { model | isSyncing = False }, Cmd.none, [] )
+    GotSyncStatus (SyncError err) ->
+        ( setError (SyncErrorMsg err) { model | isSyncing = False }, Cmd.none, [] )
 
 
 
@@ -535,6 +554,18 @@ viewMainMenu model = div [ class "main-menu" ]
                     button
                         [ onClick (ChangeSettings (\s -> { s | hideDone = True })) ]
                         [ text "hide done" ]
+            , case model.settings.sync.enabled of
+                False -> text ""
+                True  ->
+                    case model.isSyncing of
+                        True ->
+                            button
+                                []
+                                [ text "syncing" ]
+                        False ->
+                            button
+                                [ onClick SyncNow ]
+                                [ text "sync now" ]
             ]
         ]
     ]
@@ -546,6 +577,10 @@ viewError err =
         ( case err of
             NotImplemented -> [text "not implemented"]
             UnlinkWithoutParent -> [ text "trying to unlink item without parent" ]
+            SyncErrorMsg serr ->
+                [ div [] [ text "sync error" ]
+                , div [] [ text serr ]
+                ]
         )
 
 view : Model -> Html Msg
